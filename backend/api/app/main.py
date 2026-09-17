@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.core import backend_path as _backend_path  # noqa: F401
 from app.api.v1.router import router as api_v1_router
 from app.schemas.health import HealthResponse
 
