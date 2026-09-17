@@ -1,7 +1,23 @@
-# Placeholder only. Services will be added in a later phase:
-#   web, mobile, api, postgres, redis
-#
-# Usage (not yet):
-#   docker compose up
-
 name: sg-busflow
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.5
+    environment:
+      POSTGRES_USER: busflow
+      POSTGRES_PASSWORD: busflow
+      POSTGRES_DB: busflow
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U busflow -d busflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Later: redis, api, web, mobile
+
+volumes:
+  postgres_data:
