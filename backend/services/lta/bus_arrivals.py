@@ -10,5 +10,5 @@ def get_bus_arrivals(
     params: dict[str, str | int] = {"BusStopCode": bus_stop_code}
     if service_no:
         params["ServiceNo"] = service_no
-    payload = client.get("BusArrivalv2", params=params)
+    payload = client.get("v3/BusArrival", params=params)
     return LTABusArrival.model_validate(payload)

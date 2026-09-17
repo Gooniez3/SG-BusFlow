@@ -140,6 +140,7 @@ def test_list_bus_routes_and_services_use_dataset_paths() -> None:
 
 def test_get_bus_arrivals_parses_next_bus() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path.endswith("/v3/BusArrival")
         assert request.url.params["BusStopCode"] == "22009"
         return httpx.Response(
             200,

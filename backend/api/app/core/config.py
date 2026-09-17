@@ -1,11 +1,14 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_API_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(_API_ROOT / ".env", ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -16,6 +19,14 @@ class Settings(BaseSettings):
     lta_account_key: str = ""
     lta_base_url: str = "https://datamall2.mytransport.sg/ltaodataservice"
     lta_timeout_seconds: float = 10.0
+    redis_url: str = "redis://localhost:6379/0"
+    arrival_cache_ttl_seconds: int = 30
+    static_cache_ttl_seconds: int = 86400
+    lta_watch_stops: str = ""
+    arrival_poll_interval_seconds: int = 20
+
+    def watch_stop_codes(self) -> list[str]:
+        return [code.strip() for code in self.lta_watch_stops.split(",") if code.strip()]
 
 
 @lru_cache

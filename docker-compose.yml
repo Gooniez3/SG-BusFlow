@@ -17,7 +17,17 @@ services:
       timeout: 5s
       retries: 10
 
-  # Later: redis, api, web, mobile
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Later: api, web, mobile
 
 volumes:
   postgres_data:
