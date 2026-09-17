@@ -1,4 +1,6 @@
 from fastapi import APIRouter
 
-# Resource routers (stops, arrivals, routes) are added in later tickets.
+from app.api.v1.stops import router as stops_router
+
 router = APIRouter()
+router.include_router(stops_router)

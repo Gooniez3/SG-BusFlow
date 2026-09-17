@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import argparse
 
-from workers.jobs import ingest_arrivals, ingest_static, run_arrivals_loop
 from workers.runtime import runtime
+from workers.jobs import ingest_arrivals, ingest_static, run_arrivals_loop
 
 
 def main() -> None:
