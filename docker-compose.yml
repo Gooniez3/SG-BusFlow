@@ -1,0 +1,7 @@
+# Placeholder only. Services will be added in a later phase:
+#   web, mobile, api, postgres, redis
+#
+# Usage (not yet):
+#   docker compose up
+
+name: sg-busflow
