@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import L from "leaflet";
+import { Minus, Plus } from "lucide-react";
 import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import type { Stop } from "@/lib/types";
@@ -31,31 +32,44 @@ function userIcon() {
 }
 
 function stopIcon(name: string, selected: boolean) {
+  const fill = selected ? "#0f9d8a" : "#ffffff";
+  const stroke = selected ? "#ffffff" : "#475569";
+  const hole = selected ? "#ffffff" : "#64748b";
+  const label = selected
+    ? `<span class="bf-pin-label">${escapeHtml(name)}</span>`
+    : "";
   return L.divIcon({
     className: "bf-marker",
-    html: `<div class="bf-pin${selected ? " is-selected" : ""}">
-      <span class="bf-pin-head"></span>
-      <span class="bf-pin-label">${escapeHtml(name)}</span>
+    html: `<div class="bf-stop-marker${selected ? " is-selected" : ""}">
+      ${label}
+      <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" fill="${fill}" stroke="${stroke}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="12" cy="10" r="2.6" fill="${hole}"/>
+      </svg>
     </div>`,
-    iconSize: [148, 32],
-    iconAnchor: [8, 30],
+    iconSize: [28, 28],
+    iconAnchor: [14, 27],
   });
 }
 
 function busIcon(serviceNo: string) {
+  const width = Math.max(44, 18 + serviceNo.length * 9);
   return L.divIcon({
     className: "bf-marker",
     html: `<span class="bf-marker-bus is-live">${escapeHtml(serviceNo)}</span>`,
-    iconSize: [28, 22],
-    iconAnchor: [14, 11],
+    iconSize: [width, 28],
+    iconAnchor: [width / 2, 14],
   });
 }
 
-function Recenter({ lat, lng }: { lat: number; lng: number }) {
+function Recenter({ lat, lng, bottomPad = 0 }: { lat: number; lng: number; bottomPad?: number }) {
   const map = useMap();
   useEffect(() => {
-    map.setView([lat, lng]);
-  }, [lat, lng, map]);
+    const zoom = map.getZoom();
+    const point = map.project([lat, lng], zoom);
+    point.y += bottomPad / 2;
+    map.setView(map.unproject(point, zoom), zoom, { animate: true });
+  }, [lat, lng, bottomPad, map]);
   return null;
 }
 
@@ -79,6 +93,30 @@ function InvalidateSize() {
   return null;
 }
 
+function ZoomControls() {
+  const map = useMap();
+  return (
+    <div className="absolute left-3 top-3 z-[1000] hidden flex-col gap-2 md:flex">
+      <button
+        type="button"
+        className="bf-map-btn"
+        onClick={() => map.zoomIn()}
+        aria-label="Zoom in"
+      >
+        <Plus size={16} strokeWidth={2} />
+      </button>
+      <button
+        type="button"
+        className="bf-map-btn"
+        onClick={() => map.zoomOut()}
+        aria-label="Zoom out"
+      >
+        <Minus size={16} strokeWidth={2} />
+      </button>
+    </div>
+  );
+}
+
 export function StopMap({
   lat,
   lng,
@@ -87,6 +125,8 @@ export function StopMap({
   selectedCode,
   showStops = true,
   showBuses = true,
+  showUser = false,
+  bottomPad = 0,
   onSelectStop,
   onSelectBus,
 }: {
@@ -97,6 +137,8 @@ export function StopMap({
   selectedCode?: string | null;
   showStops?: boolean;
   showBuses?: boolean;
+  showUser?: boolean;
+  bottomPad?: number;
   onSelectStop?: (code: string) => void;
   onSelectBus?: (serviceNo: string) => void;
 }) {
@@ -105,18 +147,19 @@ export function StopMap({
     <MapContainer
       center={[lat, lng]}
       zoom={17}
-      className="bf-map-dark h-full w-full"
+      className="bf-map-light h-full w-full"
       attributionControl
-      zoomControl
+      zoomControl={false}
       scrollWheelZoom
     >
-      <Recenter lat={focus?.latitude ?? lat} lng={focus?.longitude ?? lng} />
+      <Recenter lat={focus?.latitude ?? lat} lng={focus?.longitude ?? lng} bottomPad={bottomPad} />
       <InvalidateSize />
+      <ZoomControls />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <Marker position={[lat, lng]} icon={userIcon()} zIndexOffset={500} />
+      {showUser ? <Marker position={[lat, lng]} icon={userIcon()} zIndexOffset={500} /> : null}
       {showStops
         ? stops.map((stop) => (
             <Marker

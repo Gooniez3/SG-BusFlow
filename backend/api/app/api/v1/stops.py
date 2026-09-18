@@ -69,12 +69,17 @@ def nearby_stops(
 @router.get("/search", response_model=StopSearchResponse)
 def search_bus_stops(
     q: str = Query(..., min_length=1, max_length=80),
+    lat: float | None = Query(default=None, ge=-90, le=90),
+    lng: float | None = Query(default=None, ge=-180, le=180),
     limit: int = Query(20, ge=1, le=50),
     db: Session = Depends(get_db),
 ) -> StopSearchResponse:
     return StopSearchResponse(
         query=q,
-        stops=[_stop_detail(stop) for stop in search_stops(db, q, limit=limit)],
+        stops=[
+            _stop_detail(stop, round(distance_m) if distance_m is not None else None)
+            for stop, distance_m in search_stops(db, q, lat=lat, lng=lng, limit=limit)
+        ],
     )
 
 

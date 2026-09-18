@@ -18,7 +18,7 @@ export function ErrorState({
         <button
           type="button"
           onClick={onRetry}
-          className="mt-3 rounded-full bg-[var(--accent)] px-4 py-2 text-sm text-[#042f2e]"
+          className="mt-3 rounded-full bg-[var(--accent)] px-4 py-2 text-sm text-[var(--on-accent)]"
         >
           Try again
         </button>

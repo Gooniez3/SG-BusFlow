@@ -31,8 +31,8 @@ export function fetchNearby(lat: number, lng: number, radius = 1000) {
   return getJson<NearbyResponse>("/api/v1/stops/nearby", { lat, lng, radius });
 }
 
-export function searchStops(query: string) {
-  return getJson<{ query: string; stops: Stop[] }>("/api/v1/stops/search", { q: query });
+export function searchStops(query: string, lat?: number, lng?: number) {
+  return getJson<{ query: string; stops: Stop[] }>("/api/v1/stops/search", { q: query, lat, lng });
 }
 
 export function searchServices(query: string) {

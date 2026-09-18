@@ -1,5 +1,6 @@
 "use client";
 
+import { Footprints, Navigation, RefreshCw } from "lucide-react";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import { ServiceTimes } from "@/components/ServiceTimes";
 import { bearingTo, walkParts } from "@/lib/format";
@@ -9,13 +10,11 @@ function DirectionArrow({ bearing }: { bearing: number | null }) {
   if (bearing == null) return <span className="w-4 shrink-0" />;
   return (
     <span
-      className="flex w-4 shrink-0 justify-center text-[var(--accent)]"
+      className="flex w-4 shrink-0 justify-center text-[var(--muted)]"
       style={{ transform: `rotate(${bearing}deg)` }}
       aria-hidden
     >
-      <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor">
-        <path d="M6 0l6 14H0L6 0z" />
-      </svg>
+      <Navigation size={12} strokeWidth={2.4} />
     </span>
   );
 }
@@ -50,7 +49,7 @@ export function StopPreview({
       : null;
 
   return (
-    <article className={`rounded-xl bg-[var(--card)] ${selected ? "ring-1 ring-[var(--accent)]" : ""}`}>
+    <article className={`rounded-xl border border-[var(--line)] bg-[var(--card)] ${selected ? "border-[var(--accent)]" : ""}`}>
       <button type="button" onClick={onSelect} className="flex w-full items-start gap-3 px-3 py-3 text-left">
         <DirectionArrow bearing={bearing} />
         <span className="min-w-0 flex-1">
@@ -61,12 +60,15 @@ export function StopPreview({
           </span>
         </span>
         {walk ? (
-          <span className="shrink-0 pt-0.5 text-sm tabular-nums text-[var(--muted)]">{walk.metres}m</span>
+          <span className="flex shrink-0 items-center gap-1 pt-0.5 text-sm tabular-nums text-[var(--muted)]">
+            <Footprints size={14} strokeWidth={2} />
+            {walk.metres}m
+          </span>
         ) : null}
       </button>
       {selected ? (
-        <div className="relative border-t border-[var(--line)] px-3 pb-3 pt-1">
-          <div className="absolute right-2 top-2 z-10 flex overflow-hidden rounded-full bg-[var(--bg)]">
+        <div className="border-t border-[var(--line)] px-3 pb-3 pt-2">
+          <div className="mb-1 flex justify-end">
             <FavoriteButton
               iconOnly
               stop={{
@@ -85,32 +87,22 @@ export function StopPreview({
                 className="flex h-9 w-9 items-center justify-center text-[var(--muted)]"
                 aria-label="Refresh arrivals"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                  <path
-                    d="M20 12a8 8 0 10-2.3 5.6"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                  />
-                  <path d="M20 8v4h-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
+                <RefreshCw size={16} strokeWidth={2} />
               </button>
             ) : null}
           </div>
-          <div className="pr-16">
-            {loading && !arrivals ? (
-              <div className="space-y-2 py-2">
-                <div className="h-8 animate-pulse rounded bg-[var(--line)]" />
-                <div className="h-8 animate-pulse rounded bg-[var(--line)]" />
-              </div>
-            ) : null}
-            {arrivals?.services.map((service) => (
-              <ServiceTimes key={service.service_no} service={service} stopCode={stop.code} />
-            ))}
-            {arrivals && arrivals.services.length === 0 ? (
-              <p className="py-3 text-sm text-[var(--muted)]">No services reported right now.</p>
-            ) : null}
-          </div>
+          {loading && !arrivals ? (
+            <div className="space-y-2 py-2">
+              <div className="h-8 animate-pulse rounded bg-[var(--line)]" />
+              <div className="h-8 animate-pulse rounded bg-[var(--line)]" />
+            </div>
+          ) : null}
+          {arrivals?.services.map((service) => (
+            <ServiceTimes key={service.service_no} service={service} stopCode={stop.code} />
+          ))}
+          {arrivals && arrivals.services.length === 0 ? (
+            <p className="py-3 text-sm text-[var(--muted)]">No services reported right now.</p>
+          ) : null}
         </div>
       ) : null}
     </article>

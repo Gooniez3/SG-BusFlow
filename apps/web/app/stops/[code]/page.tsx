@@ -2,6 +2,8 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { Footprints, Navigation } from "lucide-react";
+import { DynamicStopMap } from "@/components/DynamicStopMap";
 import { ErrorState } from "@/components/ErrorState";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import { LiveBadge } from "@/components/LiveBadge";
@@ -16,7 +18,7 @@ import { useWorkspace } from "@/lib/workspace";
 function StopPageInner() {
   const params = useParams<{ code: string }>();
   const searchParams = useSearchParams();
-  const { location, setSelectedCode } = useWorkspace();
+  const { location, setSelectedCode, stops } = useWorkspace();
   const code = params.code;
   const lat = searchParams.get("lat") ?? (location ? String(location.lat) : null);
   const lng = searchParams.get("lng") ?? (location ? String(location.lng) : null);
@@ -73,27 +75,49 @@ function StopPageInner() {
     return <ArrivalSkeleton />;
   }
 
+  const mapStops = stops.some((item) => item.code === stop.code) ? stops : [stop, ...stops];
+
   return (
-    <section className="space-y-4">
+    <section className="flex min-h-0 flex-1 flex-col gap-3 md:block md:space-y-4">
       <PageHeader
         href="/"
         label="Back to nearby"
         title={
           <div>
             <h1 className="text-xl font-semibold tracking-tight">{stop.name}</h1>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              {walkLabel(stop.distance_m) ?? `${stop.code}${stop.road_name ? ` · ${stop.road_name}` : ""}`}
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[var(--muted)]">
+              <span>{stop.code}</span>
+              {stop.road_name ? <span>{stop.road_name}</span> : null}
+              {walkLabel(stop.distance_m) ? (
+                <span className="inline-flex items-center gap-1">
+                  <Footprints size={14} strokeWidth={2} />
+                  {walkLabel(stop.distance_m)}
+                </span>
+              ) : null}
             </p>
           </div>
         }
         extra={
-          <FavoriteButton
-            iconOnly
-            stop={{ code: stop.code, name: stop.name, road_name: stop.road_name }}
-          />
+          <div className="flex items-center gap-1">
+            {stop.latitude && stop.longitude ? (
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${stop.latitude},${stop.longitude}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--card)] text-[var(--muted)]"
+                aria-label="Directions"
+              >
+                <Navigation size={16} strokeWidth={2} />
+              </a>
+            ) : null}
+            <FavoriteButton
+              iconOnly
+              stop={{ code: stop.code, name: stop.name, road_name: stop.road_name }}
+            />
+          </div>
         }
       />
-      <div className="rounded-xl bg-[var(--card)] px-3 py-2">
+      <div className="rounded-xl border border-[var(--line)] bg-[var(--card)] px-3 py-2">
         <div className="mb-1 flex items-center justify-between gap-3 px-1 pt-1">
           <h2 className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--muted)]">
             Live arrivals
@@ -120,6 +144,14 @@ function StopPageInner() {
         {arrivals?.services.map((service) => (
           <ServiceTimes key={service.service_no} service={service} stopCode={stop.code} />
         ))}
+      </div>
+      <div className="relative min-h-[220px] flex-1 overflow-hidden rounded-xl border border-[var(--line)] md:hidden">
+        <DynamicStopMap
+          lat={stop.latitude || location?.lat || 1.35}
+          lng={stop.longitude || location?.lng || 103.85}
+          stops={mapStops}
+          selectedCode={stop.code}
+        />
       </div>
     </section>
   );

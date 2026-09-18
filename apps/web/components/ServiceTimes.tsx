@@ -13,9 +13,11 @@ function hasBusPosition(service: ServiceArrivals) {
 export function ServiceTimes({
   service,
   stopCode,
+  linked = true,
 }: {
   service: ServiceArrivals;
   stopCode: string;
+  linked?: boolean;
 }) {
   const next = service.arrivals[0];
   const slots = [0, 1, 2].map((index) => service.arrivals[index] ?? null);
@@ -24,9 +26,9 @@ export function ServiceTimes({
     ? `/live/${encodeURIComponent(service.service_no)}?stop=${stopCode}`
     : `/services/${encodeURIComponent(service.service_no)}`;
   const destination = next?.destination_name;
-
-  return (
-    <Link href={href} className="flex min-h-12 items-center gap-3 py-1.5">
+  const rowClass = "flex min-h-12 items-center gap-3 py-1.5";
+  const body = (
+    <>
       <span className="min-w-0 flex-1">
         <span className="block font-mono text-[17px] font-semibold leading-tight">
           {service.service_no}
@@ -43,7 +45,7 @@ export function ServiceTimes({
             <span key={`${service.service_no}-${index}`} className="flex flex-col items-center">
               <span
                 className={`h-6 font-medium tabular-nums ${
-                  here ? "text-[var(--accent)]" : "text-[var(--ink)]"
+                  here ? "text-[var(--warn)]" : "text-[var(--ink)]"
                 }`}
               >
                 {label ?? ""}
@@ -61,6 +63,16 @@ export function ServiceTimes({
           );
         })}
       </span>
+    </>
+  );
+
+  if (!linked) {
+    return <div className={rowClass}>{body}</div>;
+  }
+
+  return (
+    <Link href={href} className={rowClass}>
+      {body}
     </Link>
   );
 }

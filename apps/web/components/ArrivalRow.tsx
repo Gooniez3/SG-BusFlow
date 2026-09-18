@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ServiceArrivals } from "@/lib/types";
-import { arrivalLabel, loadCopy } from "@/lib/format";
+import { arrivalLabel, loadBarColor, loadCopy } from "@/lib/format";
 
 function ArrivalTime({ minutes }: { minutes: number | null }) {
   const label = arrivalLabel(minutes);
@@ -14,7 +14,7 @@ function ArrivalTime({ minutes }: { minutes: number | null }) {
   return (
     <span
       className={`font-mono font-semibold tabular-nums ${
-        arriving || close ? "text-[var(--accent)] text-2xl" : "text-[var(--ink)] text-2xl"
+        arriving || close ? "text-[var(--warn)] text-2xl" : "text-[var(--ink)] text-2xl"
       }`}
     >
       {label}
@@ -58,7 +58,7 @@ export function ArrivalRow({
         {next ? (
           <span
             className={`shrink-0 font-mono text-base font-semibold tabular-nums ${
-              (next.minutes ?? 1) <= 1 ? "text-[var(--accent)]" : "text-[var(--ink)]"
+              (next.minutes ?? 1) <= 1 ? "text-[var(--warn)]" : "text-[var(--ink)]"
             }`}
           >
             {arrivalLabel(next.minutes)}
@@ -89,8 +89,11 @@ export function ArrivalRow({
         <div className="mt-3">
           <div className="h-1.5 overflow-hidden rounded-full bg-[var(--line)]" aria-hidden>
             <div
-              className="h-full rounded-full bg-[var(--accent)]"
-              style={{ width: `${Math.round(load.fill * 100)}%` }}
+              className="h-full rounded-full"
+              style={{
+                width: `${Math.round(load.fill * 100)}%`,
+                background: loadBarColor(next?.load),
+              }}
             />
           </div>
           <p className="mt-1 text-xs text-[var(--muted)]">{load.label}</p>

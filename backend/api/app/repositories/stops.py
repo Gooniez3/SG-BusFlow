@@ -6,7 +6,7 @@ from decimal import Decimal
 from geoalchemy2 import Geography
 from geoalchemy2.elements import WKTElement
 from geoalchemy2.functions import ST_Distance, ST_DWithin, ST_MakePoint, ST_SetSRID
-from sqlalchemy import cast, or_, select
+from sqlalchemy import case, cast, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -76,10 +76,29 @@ def _ilike_pattern(query: str) -> str:
     return f"%{query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')}%"
 
 
-def search_stops(db: Session, query: str, *, limit: int = 20) -> list[BusStop]:
-    pattern = _ilike_pattern(query.strip())
+def _ilike_prefix(query: str) -> str:
+    return f"{query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')}%"
+
+
+def search_stops(
+    db: Session,
+    query: str,
+    *,
+    lat: float | None = None,
+    lng: float | None = None,
+    limit: int = 20,
+) -> list[tuple[BusStop, float | None]]:
+    needle = query.strip()
+    pattern = _ilike_pattern(needle)
+    prefix = _ilike_prefix(needle)
+    distance = None
+    columns: list = [BusStop]
+    if lat is not None and lng is not None:
+        origin = cast(ST_SetSRID(ST_MakePoint(lng, lat), 4326), Geography)
+        distance = ST_Distance(BusStop.location, origin).label("distance_m")
+        columns.append(distance)
     stmt = (
-        select(BusStop)
+        select(*columns)
         .where(
             or_(
                 BusStop.code.ilike(pattern, escape="\\"),
@@ -87,10 +106,17 @@ def search_stops(db: Session, query: str, *, limit: int = 20) -> list[BusStop]:
                 BusStop.road_name.ilike(pattern, escape="\\"),
             )
         )
-        .order_by(BusStop.name)
+        .order_by(
+            case((func.lower(BusStop.code) == needle.lower(), 0), else_=1),
+            case((BusStop.name.ilike(prefix, escape="\\"), 0), else_=1),
+            distance if distance is not None else BusStop.name,
+        )
         .limit(limit)
     )
-    return list(db.scalars(stmt).all())
+    rows = db.execute(stmt).all()
+    if distance is not None:
+        return [(stop, float(metres)) for stop, metres in rows]
+    return [(row[0], None) for row in rows]
 
 
 def get_stop_by_code(db: Session, code: str) -> BusStop | None:

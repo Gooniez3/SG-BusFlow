@@ -1,53 +1,100 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { LocateFixed } from "lucide-react";
 import { DynamicStopMap } from "@/components/DynamicStopMap";
-import { ErrorState } from "@/components/ErrorState";
-import { FavoriteButton } from "@/components/FavoriteButton";
-import { ServiceTimes } from "@/components/ServiceTimes";
-import { clockTime, walkParts } from "@/lib/format";
+import { MobileMapOverlay } from "@/components/MobileMapOverlay";
+import type { BusMarker } from "@/components/StopMap";
+import { fetchArrivals } from "@/lib/api";
 import { useWorkspace } from "@/lib/workspace";
+
+function toBuses(services: { service_no: string; arrivals: { latitude: number | null; longitude: number | null; minutes: number | null }[] }[]) {
+  const buses: BusMarker[] = [];
+  const seen = new Set<string>();
+  for (const service of services) {
+    for (const arrival of service.arrivals) {
+      if (
+        !arrival.latitude ||
+        !arrival.longitude ||
+        Math.abs(arrival.latitude) < 0.1 ||
+        Math.abs(arrival.longitude) < 0.1
+      ) {
+        continue;
+      }
+      const key = `${service.service_no}-${arrival.latitude.toFixed(4)}-${arrival.longitude.toFixed(4)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      buses.push({
+        serviceNo: service.service_no,
+        lat: arrival.latitude,
+        lng: arrival.longitude,
+        minutes: arrival.minutes,
+      });
+    }
+  }
+  return buses;
+}
 
 export function WorkspaceMap() {
   const router = useRouter();
   const pathname = usePathname();
-  const mapKey = pathname === "/map" ? "mobile-map" : "workspace-map";
+  const mapPage = pathname === "/map";
+  const mapKey = mapPage ? "mobile-map" : "workspace-map";
+  const [mobile, setMobile] = useState(false);
+  const [fleet, setFleet] = useState<BusMarker[]>([]);
   const {
     location,
     stops,
     selectedCode,
     setSelectedCode,
     preview,
-    previewLoading,
-    previewError,
     reload,
   } = useWorkspace();
-  const selectedStop = stops.find((stop) => stop.code === selectedCode) ?? null;
-  const walk = walkParts(selectedStop?.distance_m);
-  const buses = useMemo(
-    () =>
-      (preview?.services ?? []).flatMap((service) =>
-        service.arrivals
-          .filter(
-            (arrival) =>
-              arrival.latitude &&
-              arrival.longitude &&
-              Math.abs(arrival.latitude) > 0.1 &&
-              Math.abs(arrival.longitude) > 0.1,
-          )
-          .map((arrival) => ({
-            serviceNo: service.service_no,
-            lat: arrival.latitude as number,
-            lng: arrival.longitude as number,
-            minutes: arrival.minutes,
-          })),
-      ),
-    [preview],
-  );
+  const buses = useMemo(() => {
+    const extra = preview ? toBuses(preview.services) : [];
+    const seen = new Set(fleet.map((bus) => `${bus.serviceNo}-${bus.lat.toFixed(4)}-${bus.lng.toFixed(4)}`));
+    return [
+      ...fleet,
+      ...extra.filter((bus) => {
+        const key = `${bus.serviceNo}-${bus.lat.toFixed(4)}-${bus.lng.toFixed(4)}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }),
+    ];
+  }, [fleet, preview]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const sync = () => setMobile(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    const codes = stops.slice(0, 8).map((stop) => stop.code);
+    if (codes.length === 0) {
+      setFleet([]);
+      return;
+    }
+    let cancelled = false;
+    Promise.all(codes.map((code) => fetchArrivals(code).catch(() => null))).then((results) => {
+      if (cancelled) return;
+      setFleet(
+        toBuses(
+          results.flatMap((result) => result?.services ?? []),
+        ),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [stops]);
 
   if (!location) {
-    return <div className="h-full w-full bg-[#1a1d21]" />;
+    return <div className="h-full w-full bg-[#e8eef4]" />;
   }
 
   return (
@@ -59,77 +106,25 @@ export function WorkspaceMap() {
         stops={stops}
         buses={buses}
         selectedCode={selectedCode}
+        showUser
+        bottomPad={mapPage && mobile ? 250 : 0}
         onSelectStop={setSelectedCode}
         onSelectBus={(serviceNo) => {
-          if (selectedCode) {
-            router.push(`/live/${serviceNo}?stop=${selectedCode}`);
+          const stop = selectedCode ?? stops[0]?.code;
+          if (stop) {
+            router.push(`/live/${serviceNo}?stop=${stop}`);
           }
         }}
       />
+      {mapPage ? <MobileMapOverlay /> : null}
       <button
         type="button"
         onClick={reload}
-        className="absolute bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-3 z-[1200] flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#111827] shadow-[0_2px_10px_rgb(0_0_0_/_0.35)] md:bottom-8 md:right-5"
+        className="absolute bottom-8 right-5 z-[1200] hidden h-11 w-11 items-center justify-center rounded-full bg-white text-[#0f172a] shadow-[0_2px_10px_rgb(15_23_42_/_0.18)] md:flex"
         aria-label="Use current location"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
+        <LocateFixed size={18} strokeWidth={2} />
       </button>
-      {selectedStop ? (
-        <div className="bf-sheet absolute inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-[1200] max-h-[48%] overflow-y-auto rounded-2xl border border-[var(--line)] bg-[var(--card)] px-3 pb-3 pt-2 shadow-[0_8px_30px_rgb(0_0_0_/_0.35)] md:hidden">
-          <div className="mb-2 flex items-start gap-2">
-            <div className="min-w-0 flex-1 px-1 pt-1">
-              <p className="font-medium leading-tight">{selectedStop.name}</p>
-              <p className="mt-1 text-xs text-[var(--muted)]">
-                {walk ? `${walk.metres}m` : selectedStop.code}
-                {selectedStop.road_name ? ` · ${selectedStop.road_name}` : ` · ${selectedStop.code}`}
-              </p>
-            </div>
-            <FavoriteButton
-              iconOnly
-              stop={{
-                code: selectedStop.code,
-                name: selectedStop.name,
-                road_name: selectedStop.road_name,
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => setSelectedCode(null)}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)]"
-              aria-label="Close stop"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-              </svg>
-            </button>
-          </div>
-          {previewLoading && !preview ? (
-            <div className="space-y-2 px-1 py-2">
-              <div className="h-8 animate-pulse rounded bg-[var(--line)]" />
-              <div className="h-8 animate-pulse rounded bg-[var(--line)]" />
-            </div>
-          ) : null}
-          {previewError ? (
-            <ErrorState
-              title="Live arrivals unavailable"
-              detail="We couldn't retrieve the latest arrival information."
-              lastUpdated={clockTime(preview?.cached_at)}
-              onRetry={() => setSelectedCode(selectedStop.code)}
-            />
-          ) : null}
-          <div className="px-1">
-            {preview?.services.map((service) => (
-              <ServiceTimes key={service.service_no} service={service} stopCode={selectedStop.code} />
-            ))}
-            {preview && preview.services.length === 0 ? (
-              <p className="py-3 text-sm text-[var(--muted)]">No services reported right now.</p>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

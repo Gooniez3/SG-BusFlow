@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { BusFront, GripVertical, Heart, MapPin } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { StopPreview } from "@/components/StopPreview";
 import {
@@ -40,7 +41,8 @@ export default function FavoritesPage() {
     <section className="space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight">Favorites</h1>
       <div>
-        <h2 className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-[var(--muted)]">
+        <h2 className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-[var(--muted)]">
+          <MapPin size={14} strokeWidth={2} />
           Saved stops
         </h2>
         {stops.length === 0 ? (
@@ -56,7 +58,8 @@ export default function FavoritesPage() {
                   <p className="text-sm text-[var(--muted)]">
                     {labels.home === stop.code ? "Home" : labels.work === stop.code ? "Work" : "Saved"}
                   </p>
-                  <div className="flex gap-1">
+                  <div className="flex items-center gap-1">
+                    <GripVertical size={16} className="text-[var(--muted)]" aria-hidden />
                     <button
                       type="button"
                       onClick={() => {
@@ -103,9 +106,10 @@ export default function FavoritesPage() {
                         toggleFavorite(stop);
                         refresh();
                       }}
-                      className="rounded-lg border border-[var(--line)] px-2 py-1 text-xs text-[var(--muted)]"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] text-[var(--muted)]"
+                      aria-label="Remove stop"
                     >
-                      Remove
+                      <Heart size={14} strokeWidth={2} fill="currentColor" />
                     </button>
                   </div>
                 </div>
@@ -123,7 +127,8 @@ export default function FavoritesPage() {
         )}
       </div>
       <div>
-        <h2 className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-[var(--muted)]">
+        <h2 className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-[var(--muted)]">
+          <BusFront size={14} strokeWidth={2} />
           Saved services
         </h2>
         {services.length === 0 ? (
@@ -141,9 +146,10 @@ export default function FavoritesPage() {
                     toggleFavoriteService(service);
                     refresh();
                   }}
-                  className="text-xs text-[var(--muted)]"
+                  className="flex h-8 w-8 items-center justify-center text-[var(--muted)]"
+                  aria-label="Remove service"
                 >
-                  Remove
+                  <Heart size={16} strokeWidth={2} fill="currentColor" />
                 </button>
               </div>
             ))}

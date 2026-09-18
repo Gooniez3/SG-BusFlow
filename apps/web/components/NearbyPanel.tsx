@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { MapPin, Navigation, RefreshCw } from "lucide-react";
 import { ErrorState } from "@/components/ErrorState";
 import { EmptyState } from "@/components/EmptyState";
 import { StopCardSkeleton } from "@/components/Skeleton";
@@ -28,7 +29,8 @@ export function NearbyPanel() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight md:text-2xl">Nearby</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-[var(--muted)]">
+            <Navigation size={14} strokeWidth={2} />
             {locationLoading
               ? "Finding your location"
               : location?.isDemo
@@ -40,9 +42,10 @@ export function NearbyPanel() {
           <button
             type="button"
             onClick={reload}
-            className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--muted)]"
+            className="flex h-9 items-center gap-1.5 rounded-full border border-[var(--line)] px-3 text-xs text-[var(--muted)]"
             aria-label="Refresh location"
           >
+            <RefreshCw size={14} strokeWidth={2} />
             Refresh
           </button>
           <Link
@@ -50,13 +53,7 @@ export function NearbyPanel() {
             className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted)] md:hidden"
             aria-label="Open map"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path
-                d="M4 7.5l5.5-2v13L4 20.5v-13zM9.5 5.5l5 2.5v13l-5-2.5v-13zM14.5 8l5.5-2.5v13L14.5 21V8z"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              />
-            </svg>
+            <MapPin size={16} strokeWidth={2} />
           </Link>
         </div>
       </div>

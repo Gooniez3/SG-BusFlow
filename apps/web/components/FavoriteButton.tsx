@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Heart } from "lucide-react";
 import { isFavorite, toggleFavorite, type FavoriteStop } from "@/lib/favorites";
 
 export function FavoriteButton({
@@ -26,7 +27,7 @@ export function FavoriteButton({
       }}
       className={
         iconOnly
-          ? `flex h-9 w-9 items-center justify-center rounded-full ${
+          ? `flex h-10 w-10 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--card)] ${
               saved ? "text-[var(--accent)]" : "text-[var(--muted)]"
             }`
           : `inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3 text-sm ${
@@ -38,14 +39,7 @@ export function FavoriteButton({
       aria-pressed={saved}
       aria-label={saved ? "Remove from favorites" : "Save stop"}
     >
-      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
-        <path
-          d="M12 18l-6.2-5.4A3.8 3.8 0 0112 7.2a3.8 3.8 0 016.2 5.4L12 18z"
-          fill={saved ? "currentColor" : "none"}
-          stroke="currentColor"
-          strokeWidth="1.7"
-        />
-      </svg>
+      <Heart size={18} strokeWidth={1.8} fill={saved ? "currentColor" : "none"} />
       {iconOnly ? null : saved ? "Saved" : "Save"}
     </button>
   );

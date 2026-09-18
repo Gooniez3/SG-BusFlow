@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent } from "react";
+import { Search } from "lucide-react";
 
 export function SearchBar({
   name = "q",
@@ -31,10 +32,7 @@ export function SearchBar({
         {placeholder}
       </label>
       <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[var(--muted)]" aria-hidden>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-          <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M16 16l4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
+        <Search size={18} strokeWidth={2} />
       </span>
       <input
         id={name}

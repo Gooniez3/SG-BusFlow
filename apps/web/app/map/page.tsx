@@ -7,7 +7,7 @@ export default function MapPage() {
   const { location, reload } = useWorkspace();
 
   return (
-    <section className="space-y-4">
+    <section data-map-page className="space-y-4">
       <h1 className="text-2xl font-semibold tracking-tight">Map</h1>
       <p className="text-sm text-[var(--muted)]">
         {location?.denied

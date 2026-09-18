@@ -31,9 +31,9 @@ export function arrivalShort(minutes: number | null | undefined) {
 }
 
 export function loadBarColor(load: string | null | undefined) {
-  if (load === "LSD") return "#f97316";
-  if (load === "SDA") return "#eab308";
-  return "#22c55e";
+  if (load === "LSD") return "#dc2626";
+  if (load === "SDA") return "#f59e0b";
+  return "#16a34a";
 }
 
 export function bearingTo(
@@ -87,4 +87,16 @@ export function soonestMinutes(services: { arrivals: { minutes: number | null }[
   );
   if (values.length === 0) return null;
   return Math.min(...values);
+}
+
+export function nextService(services: { service_no: string; arrivals: { minutes: number | null }[] }[]) {
+  let best: { serviceNo: string; minutes: number } | null = null;
+  for (const service of services) {
+    const minutes = service.arrivals[0]?.minutes;
+    if (minutes == null) continue;
+    if (!best || minutes < best.minutes) {
+      best = { serviceNo: service.service_no, minutes };
+    }
+  }
+  return best;
 }
