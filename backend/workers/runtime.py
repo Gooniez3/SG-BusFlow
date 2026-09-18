@@ -11,7 +11,7 @@ for path in (str(BACKEND_ROOT), str(API_ROOT)):
         sys.path.insert(0, path)
 
 from app.core.config import Settings, get_settings  # noqa: E402
-from app.core.lta import get_lta_client  # noqa: E402
+from app.core.lta import create_lta_client  # noqa: E402
 from app.core.redis import get_redis  # noqa: E402
 from services.cache.store import CacheStore  # noqa: E402
 from services.lta.client import LTAClient  # noqa: E402
@@ -25,4 +25,4 @@ logger = logging.getLogger("workers")
 
 def runtime() -> tuple[LTAClient, CacheStore, Settings]:
     settings = get_settings()
-    return get_lta_client(), CacheStore(get_redis()), settings
+    return create_lta_client(), CacheStore(get_redis()), settings

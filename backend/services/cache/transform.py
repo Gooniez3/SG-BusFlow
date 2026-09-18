@@ -31,6 +31,8 @@ def _transform_next_bus(next_bus: LTANextBus | None, *, now: datetime) -> Cached
         load=next_bus.load,
         feature=next_bus.feature,
         type=next_bus.type,
+        origin_code=next_bus.origin_code,
+        destination_code=next_bus.destination_code,
     )
 
 

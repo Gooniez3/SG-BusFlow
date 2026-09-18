@@ -34,6 +34,7 @@ def test_transform_arrivals_computes_minutes() -> None:
                         "Load": "SEA",
                         "Feature": "WAB",
                         "Type": "SD",
+                        "DestinationCode": "28009",
                     },
                     "NextBus2": {"EstimatedArrival": ""},
                 }
@@ -48,6 +49,7 @@ def test_transform_arrivals_computes_minutes() -> None:
     assert len(cached.services[0].arrivals) == 1
     assert cached.services[0].arrivals[0].minutes == 3
     assert cached.services[0].arrivals[0].load == "SEA"
+    assert cached.services[0].arrivals[0].destination_code == "28009"
     assert cached.services[0].arrivals[0].latitude == pytest.approx(1.3404)
 
 

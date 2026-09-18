@@ -6,7 +6,7 @@ from decimal import Decimal
 from geoalchemy2 import Geography
 from geoalchemy2.elements import WKTElement
 from geoalchemy2.functions import ST_Distance, ST_DWithin, ST_MakePoint, ST_SetSRID
-from sqlalchemy import cast, select
+from sqlalchemy import cast, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -70,3 +70,44 @@ def find_nearby_stops(
         .limit(limit)
     )
     return [(stop, float(metres)) for stop, metres in db.execute(stmt).all()]
+
+
+def _ilike_pattern(query: str) -> str:
+    return f"%{query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')}%"
+
+
+def search_stops(db: Session, query: str, *, limit: int = 20) -> list[BusStop]:
+    pattern = _ilike_pattern(query.strip())
+    stmt = (
+        select(BusStop)
+        .where(
+            or_(
+                BusStop.code.ilike(pattern, escape="\\"),
+                BusStop.name.ilike(pattern, escape="\\"),
+                BusStop.road_name.ilike(pattern, escape="\\"),
+            )
+        )
+        .order_by(BusStop.name)
+        .limit(limit)
+    )
+    return list(db.scalars(stmt).all())
+
+
+def get_stop_by_code(db: Session, code: str) -> BusStop | None:
+    return db.scalar(select(BusStop).where(BusStop.code == code))
+
+
+def get_stops_by_codes(db: Session, codes: list[str]) -> dict[str, BusStop]:
+    unique = [code for code in dict.fromkeys(codes) if code]
+    if not unique:
+        return {}
+    rows = db.scalars(select(BusStop).where(BusStop.code.in_(unique))).all()
+    return {stop.code: stop for stop in rows}
+
+
+def distance_to_stop(db: Session, stop: BusStop, *, lat: float, lng: float) -> float:
+    origin = cast(ST_SetSRID(ST_MakePoint(lng, lat), 4326), Geography)
+    metres = db.scalar(
+        select(ST_Distance(BusStop.location, origin)).where(BusStop.id == stop.id)
+    )
+    return float(metres or 0)

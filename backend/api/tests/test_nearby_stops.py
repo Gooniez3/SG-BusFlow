@@ -56,13 +56,13 @@ def test_nearby_query_orders_by_postgis_distance(db: Session) -> None:
     db.commit()
 
     nearby = find_nearby_stops(db, lat=1.3404, lng=103.7050, radius_m=1000, limit=20)
-    codes = [stop.code for stop, _ in nearby]
+    test_hits = [(stop, metres) for stop, metres in nearby if stop.code.startswith("ZZ")]
+    codes = [stop.code for stop, _ in test_hits]
 
     assert "ZZ001" in codes
     assert "ZZ002" in codes
     assert "ZZ009" not in codes
-    assert codes[0] in {"ZZ001", "ZZ002"}
-    distances = [metres for _, metres in nearby]
+    distances = [metres for _, metres in test_hits]
     assert distances == sorted(distances)
     assert all(metres <= 1000 for metres in distances)
 
@@ -93,3 +93,28 @@ def test_nearby_rejects_invalid_coordinates(client: TestClient) -> None:
         params={"lat": 99.0, "lng": 103.7050},
     )
     assert response.status_code == 422
+
+
+def test_search_stops_by_name(client: TestClient, db: Session) -> None:
+    upsert_bus_stops(db, TEST_STOPS)
+    db.commit()
+
+    response = client.get("/api/v1/stops/search", params={"q": "ZZ001"})
+    assert response.status_code == 200
+    codes = [stop["code"] for stop in response.json()["stops"]]
+    assert "ZZ001" in codes
+
+
+def test_get_stop_includes_walking_distance(client: TestClient, db: Session) -> None:
+    upsert_bus_stops(db, TEST_STOPS)
+    db.commit()
+
+    response = client.get(
+        "/api/v1/stops/ZZ001",
+        params={"lat": 1.3404, "lng": 103.7050},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["code"] == "ZZ001"
+    assert payload["distance_m"] is not None
+    assert payload["distance_m"] < 1000

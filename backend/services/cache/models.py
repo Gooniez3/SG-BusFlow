@@ -15,6 +15,8 @@ class CachedArrival(BaseModel):
     load: str | None = None
     feature: str | None = None
     type: str | None = None
+    origin_code: str | None = None
+    destination_code: str | None = None
 
 
 class CachedServiceArrivals(BaseModel):
