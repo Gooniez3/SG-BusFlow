@@ -16,7 +16,7 @@ import { useWorkspace } from "@/lib/workspace";
 function LiveBusInner() {
   const params = useParams<{ serviceNo: string }>();
   const searchParams = useSearchParams();
-  const { setSelectedCode, location, stops } = useWorkspace();
+  const { setSelectedCode, location } = useWorkspace();
   const serviceNo = params.serviceNo.toUpperCase();
   const stopCode = searchParams.get("stop");
   const [stop, setStop] = useState<Stop | null>(null);
@@ -45,24 +45,25 @@ function LiveBusInner() {
   const service = arrivals?.services.find((item) => item.service_no === serviceNo);
   const next: Arrival | undefined = service?.arrivals[0];
   const load = loadCopy(next?.load);
-  const buses = useMemo(
-    () =>
-      (service?.arrivals ?? [])
-        .filter(
-          (arrival) =>
-            arrival.latitude &&
-            arrival.longitude &&
-            Math.abs(arrival.latitude) > 0.1 &&
-            Math.abs(arrival.longitude) > 0.1,
-        )
-        .map((arrival) => ({
-          serviceNo,
-          lat: arrival.latitude as number,
-          lng: arrival.longitude as number,
-          minutes: arrival.minutes,
-        })),
-    [service, serviceNo],
-  );
+  const buses = useMemo(() => {
+    const arrival = (service?.arrivals ?? []).find(
+      (item) =>
+        item.latitude &&
+        item.longitude &&
+        Math.abs(item.latitude) > 0.1 &&
+        Math.abs(item.longitude) > 0.1,
+    );
+    return arrival
+      ? [
+          {
+            serviceNo,
+            lat: arrival.latitude as number,
+            lng: arrival.longitude as number,
+            minutes: arrival.minutes,
+          },
+        ]
+      : [];
+  }, [service, serviceNo]);
   const mapCenter = buses[0] ?? (location ? { lat: location.lat, lng: location.lng } : null);
 
   if (!stopCode) {
@@ -120,7 +121,7 @@ function LiveBusInner() {
           <DynamicStopMap
             lat={mapCenter.lat}
             lng={mapCenter.lng}
-            stops={stops}
+            stops={[stop]}
             buses={buses}
             selectedCode={stopCode}
           />

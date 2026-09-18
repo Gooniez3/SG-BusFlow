@@ -95,24 +95,25 @@ export default function ServicePage() {
     };
   }, [selectedCode, serviceNo, stops]);
 
-  const buses = useMemo(
-    () =>
-      (live?.arrivals ?? [])
-        .filter(
-          (arrival) =>
-            arrival.latitude &&
-            arrival.longitude &&
-            Math.abs(arrival.latitude) > 0.1 &&
-            Math.abs(arrival.longitude) > 0.1,
-        )
-        .map((arrival) => ({
-          serviceNo,
-          lat: arrival.latitude as number,
-          lng: arrival.longitude as number,
-          minutes: arrival.minutes,
-        })),
-    [live, serviceNo],
-  );
+  const buses = useMemo(() => {
+    const arrival = (live?.arrivals ?? []).find(
+      (item) =>
+        item.latitude &&
+        item.longitude &&
+        Math.abs(item.latitude) > 0.1 &&
+        Math.abs(item.longitude) > 0.1,
+    );
+    return arrival
+      ? [
+          {
+            serviceNo,
+            lat: arrival.latitude as number,
+            lng: arrival.longitude as number,
+            minutes: arrival.minutes,
+          },
+        ]
+      : [];
+  }, [live, serviceNo]);
 
   if (error) {
     return <ErrorState title="Could not load this service" detail={error} />;
@@ -171,7 +172,7 @@ export default function ServicePage() {
           <DynamicStopMap
             lat={mapCenter.lat}
             lng={mapCenter.lng}
-            stops={stops}
+            stops={liveStop ? [liveStop] : []}
             buses={buses}
             selectedCode={liveStop?.code}
           />

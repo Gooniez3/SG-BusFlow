@@ -62,14 +62,34 @@ function busIcon(serviceNo: string) {
   });
 }
 
-function Recenter({ lat, lng, bottomPad = 0 }: { lat: number; lng: number; bottomPad?: number }) {
+function Recenter({
+  lat,
+  lng,
+  bottomPad = 0,
+  fit,
+}: {
+  lat: number;
+  lng: number;
+  bottomPad?: number;
+  fit?: [number, number][];
+}) {
   const map = useMap();
+  const fitKey = fit?.map((point) => `${point[0].toFixed(5)},${point[1].toFixed(5)}`).join("|") ?? "";
   useEffect(() => {
+    if (fit && fit.length >= 2) {
+      map.fitBounds(fit, {
+        paddingTopLeft: [32, 32],
+        paddingBottomRight: [32, 32 + bottomPad],
+        maxZoom: 17,
+        animate: true,
+      });
+      return;
+    }
     const zoom = map.getZoom();
     const point = map.project([lat, lng], zoom);
     point.y += bottomPad / 2;
     map.setView(map.unproject(point, zoom), zoom, { animate: true });
-  }, [lat, lng, bottomPad, map]);
+  }, [lat, lng, bottomPad, fit, fitKey, map]);
   return null;
 }
 
@@ -143,6 +163,13 @@ export function StopMap({
   onSelectBus?: (serviceNo: string) => void;
 }) {
   const focus = stops.find((stop) => stop.code === selectedCode);
+  const fit =
+    buses.length === 1 && focus
+      ? [
+          [buses[0].lat, buses[0].lng] as [number, number],
+          [focus.latitude, focus.longitude] as [number, number],
+        ]
+      : undefined;
   return (
     <MapContainer
       center={[lat, lng]}
@@ -152,7 +179,7 @@ export function StopMap({
       zoomControl={false}
       scrollWheelZoom
     >
-      <Recenter lat={focus?.latitude ?? lat} lng={focus?.longitude ?? lng} bottomPad={bottomPad} />
+      <Recenter lat={focus?.latitude ?? lat} lng={focus?.longitude ?? lng} bottomPad={bottomPad} fit={fit} />
       <InvalidateSize />
       <ZoomControls />
       <TileLayer
