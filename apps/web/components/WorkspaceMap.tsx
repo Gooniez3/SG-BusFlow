@@ -105,7 +105,7 @@ export function WorkspaceMap() {
   }, [selectedCode, stops]);
 
   if (!location) {
-    return <div className="h-full w-full bg-[#e8eef4]" />;
+    return <div className="h-full w-full bg-[var(--map-bg)]" />;
   }
 
   return (
@@ -131,7 +131,7 @@ export function WorkspaceMap() {
       <button
         type="button"
         onClick={reload}
-        className="absolute bottom-8 right-5 z-[1200] hidden h-11 w-11 items-center justify-center rounded-full bg-white text-[#0f172a] shadow-[0_2px_10px_rgb(15_23_42_/_0.18)] md:flex"
+        className="absolute bottom-8 right-5 z-[1200] hidden h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--card)] text-[var(--ink)] shadow-[0_2px_10px_var(--shadow)] md:flex"
         aria-label="Use current location"
       >
         <LocateFixed size={18} strokeWidth={2} />

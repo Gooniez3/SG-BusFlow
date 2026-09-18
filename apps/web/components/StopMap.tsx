@@ -32,9 +32,6 @@ function userIcon() {
 }
 
 function stopIcon(name: string, selected: boolean) {
-  const fill = selected ? "#0f9d8a" : "#ffffff";
-  const stroke = selected ? "#ffffff" : "#475569";
-  const hole = selected ? "#ffffff" : "#64748b";
   const label = selected
     ? `<span class="bf-pin-label">${escapeHtml(name)}</span>`
     : "";
@@ -43,8 +40,8 @@ function stopIcon(name: string, selected: boolean) {
     html: `<div class="bf-stop-marker${selected ? " is-selected" : ""}">
       ${label}
       <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" fill="${fill}" stroke="${stroke}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="12" cy="10" r="2.6" fill="${hole}"/>
+        <path class="bf-pin-body" d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle class="bf-pin-hole" cx="12" cy="10" r="2.6"/>
       </svg>
     </div>`,
     iconSize: [28, 28],

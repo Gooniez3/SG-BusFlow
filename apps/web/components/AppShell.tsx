@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Heart, Map, MapPin, Search, UserCircle } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { WorkspaceMap } from "@/components/WorkspaceMap";
+import { ThemeProvider } from "@/lib/theme";
 import { WorkspaceProvider } from "@/lib/workspace";
 
 const DESKTOP_LINKS = [
@@ -30,7 +32,7 @@ function navActive(pathname: string, href: string) {
 function Wordmark() {
   return (
     <Link href="/" className="flex items-center gap-2" aria-label="SG BusFlow home">
-      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--accent)] text-white" aria-hidden>
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--accent)] text-[var(--on-accent)]" aria-hidden>
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path d="M2 11c3-6 9-6 12 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           <circle cx="8" cy="5" r="1.4" fill="currentColor" />
@@ -68,14 +70,17 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <button
-          type="button"
-          onClick={() => setProfileOpen((value) => !value)}
-          className="hidden h-8 w-8 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--card)] text-[var(--muted)] md:flex"
-          aria-label="Account"
-        >
-          <UserCircle size={18} strokeWidth={2} />
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            type="button"
+            onClick={() => setProfileOpen((value) => !value)}
+            className="hidden h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--card)] text-[var(--muted)] md:flex"
+            aria-label="Account"
+          >
+            <UserCircle size={18} strokeWidth={2} />
+          </button>
+        </div>
       </header>
       {profileOpen ? (
         <div className="border-b border-[var(--line)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--muted)]">
@@ -123,9 +128,11 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <WorkspaceProvider>
-      <ShellChrome>{children}</ShellChrome>
-    </WorkspaceProvider>
+    <ThemeProvider>
+      <WorkspaceProvider>
+        <ShellChrome>{children}</ShellChrome>
+      </WorkspaceProvider>
+    </ThemeProvider>
   );
 }
 

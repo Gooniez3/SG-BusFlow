@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import { LiveBadge } from "@/components/LiveBadge";
 import { ServiceTimes } from "@/components/ServiceTimes";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { fetchArrivals } from "@/lib/api";
 import { arrivalShort, clockTime, nextService, walkParts } from "@/lib/format";
 import type { Stop, StopArrivalsResponse } from "@/lib/types";
@@ -80,24 +81,25 @@ export function MobileMapOverlay() {
     <div className="pointer-events-none absolute inset-0 z-[1200] md:hidden">
       <Link
         href="/search"
-        className="pointer-events-auto absolute left-3 right-[4.75rem] top-3 flex h-12 items-center gap-3 rounded-full border border-white/80 bg-white/92 px-4 text-sm text-[var(--muted)] shadow-[0_10px_30px_rgb(15_23_42_/_0.14)] backdrop-blur-md"
+        className="pointer-events-auto absolute left-3 right-[4.75rem] top-3 flex h-12 items-center gap-3 rounded-full border border-[var(--glass-line)] bg-[var(--glass)] px-4 text-sm text-[var(--muted)] shadow-[0_10px_30px_var(--shadow)] backdrop-blur-md"
       >
         <Search size={16} strokeWidth={2} />
         Search stops and buses
       </Link>
+      <ThemeToggle className="pointer-events-auto absolute right-3 top-3 !h-12 !w-12 shadow-[0_10px_30px_var(--shadow)]" />
 
       <div className="pointer-events-auto absolute inset-x-0 bottom-0 flex flex-col items-end">
         <button
           type="button"
           onClick={reload}
-          className="mb-3 mr-3 flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#0f172a] shadow-[0_8px_24px_rgb(15_23_42_/_0.16)]"
+          className="mb-3 mr-3 flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--card)] text-[var(--ink)] shadow-[0_8px_24px_var(--shadow)]"
           aria-label="Use current location"
         >
           <LocateFixed size={18} strokeWidth={2} />
         </button>
 
         <section
-          className="flex w-full flex-col overflow-hidden rounded-t-[1.6rem] border-t border-white/80 bg-[var(--card)]/96 shadow-[0_-12px_40px_rgb(15_23_42_/_0.16)] backdrop-blur-xl transition-[height] duration-200 ease-out"
+          className="flex w-full flex-col overflow-hidden rounded-t-[1.6rem] border-t border-[var(--glass-line)] bg-[var(--glass)] shadow-[0_-12px_40px_var(--shadow)] backdrop-blur-xl transition-[height] duration-200 ease-out"
           style={{ height: sheetMax }}
         >
           <div
@@ -106,7 +108,7 @@ export function MobileMapOverlay() {
             onPointerUp={onHandlePointerUp}
             onClick={() => setOpen((value) => !value)}
           >
-            <span className="h-1 w-10 rounded-full bg-[#cbd5e1]" />
+            <span className="h-1 w-10 rounded-full bg-[var(--line)]" />
           </div>
 
           {selectedStop ? (
@@ -136,7 +138,7 @@ export function MobileMapOverlay() {
               <div className="shrink-0 px-4 pb-3 pt-2">
                 <Link
                   href={`/stops/${selectedStop.code}`}
-                  className="flex h-11 items-center justify-center rounded-full bg-[var(--accent)] text-sm font-medium text-white"
+                  className="flex h-11 items-center justify-center rounded-full bg-[var(--accent)] text-sm font-medium text-[var(--on-accent)]"
                 >
                   View stop
                 </Link>
@@ -204,7 +206,7 @@ function NearbySheet({
           <button
             type="button"
             onClick={onLocate}
-            className="h-8 rounded-full bg-[var(--accent)] px-3 text-xs font-medium text-white"
+            className="h-8 rounded-full bg-[var(--accent)] px-3 text-xs font-medium text-[var(--on-accent)]"
           >
             Enable
           </button>
@@ -230,7 +232,7 @@ function NearbySheet({
             >
               <span
                 className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${
-                  index === 0 ? "bg-[var(--accent)]" : "bg-[#cbd5e1]"
+                  index === 0 ? "bg-[var(--accent)]" : "bg-[var(--line)]"
                 }`}
               />
               <span className="min-w-0 flex-1">
