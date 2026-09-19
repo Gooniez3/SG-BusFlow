@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     lta_watch_stops: str = ""
     arrival_poll_interval_seconds: int = 20
     cors_origins: str = (
-        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:8081,http://127.0.0.1:8081"
     )
 
     def watch_stop_codes(self) -> list[str]:
