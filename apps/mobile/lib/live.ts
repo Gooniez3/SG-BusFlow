@@ -61,6 +61,41 @@ function connectLive<T>(path: string, onMessage: (payload: T | null, error?: str
   };
 }
 
+export function useLiveStops(codes: string[]) {
+  const key = codes.join(",");
+  const [data, setData] = useState<Record<string, StopArrivalsResponse>>({});
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!key) {
+      setData({});
+      return;
+    }
+    const list = key.split(",");
+    const next: Record<string, StopArrivalsResponse> = {};
+    const sockets = list.map((code) =>
+      connectLive<StopArrivalsResponse>(`/ws/v1/stops/${code}`, (payload, liveError) => {
+        if (liveError) {
+          setError(liveError);
+          return;
+        }
+        if (!payload) return;
+        next[code] = payload;
+        setData({ ...next });
+        setError(null);
+      }),
+    );
+    return () => {
+      for (const close of sockets) close();
+    };
+  }, [key]);
+
+  return useMemo(
+    () => ({ data, error, loading: key.length > 0 && Object.keys(data).length === 0 }),
+    [data, error, key],
+  );
+}
+
 export function useStopLive(code: string | null) {
   const [data, setData] = useState<StopArrivalsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);

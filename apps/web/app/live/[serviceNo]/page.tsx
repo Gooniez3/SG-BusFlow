@@ -8,6 +8,7 @@ import { LiveBadge } from "@/components/LiveBadge";
 import { PageHeader } from "@/components/PageHeader";
 import { ServiceFavoriteButton } from "@/components/ServiceFavoriteButton";
 import { ServiceTimes } from "@/components/ServiceTimes";
+import { busesForService } from "@/lib/buses";
 import { loadBarColor, loadCopy } from "@/lib/format";
 import { fetchStop } from "@/lib/transport";
 import type { Arrival, Stop } from "@/lib/types";
@@ -45,25 +46,14 @@ function LiveBusInner() {
   const next: Arrival | undefined = service?.arrivals[0];
   const load = loadCopy(next?.load);
   const buses = useMemo(() => {
-    const arrival = (service?.arrivals ?? []).find(
-      (item) =>
-        item.latitude &&
-        item.longitude &&
-        Math.abs(item.latitude) > 0.1 &&
-        Math.abs(item.longitude) > 0.1,
-    );
-    return arrival
-      ? [
-          {
-            serviceNo,
-            lat: arrival.latitude as number,
-            lng: arrival.longitude as number,
-            minutes: arrival.minutes,
-          },
-        ]
-      : [];
+    if (!service) return [];
+    return busesForService(service, serviceNo);
   }, [service, serviceNo]);
-  const mapCenter = buses[0] ?? (location ? { lat: location.lat, lng: location.lng } : null);
+  const mapCenter = stop
+    ? { lat: stop.latitude, lng: stop.longitude }
+    : location
+      ? { lat: location.lat, lng: location.lng }
+      : null;
 
   if (!stopCode) {
     return <ErrorState title="Choose a stop first" detail="Open a stop, then track a bus from live arrivals." />;
@@ -123,12 +113,19 @@ function LiveBusInner() {
             stops={[stop]}
             buses={buses}
             selectedCode={stopCode}
+            showUser={false}
+            fitToBus={buses.length > 0}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-[var(--muted)]">
             Finding the bus on the map…
           </div>
         )}
+        {buses.length === 0 ? (
+          <p className="pointer-events-none absolute bottom-3 left-3 right-3 rounded-lg bg-[var(--glass)] px-3 py-2 text-xs text-[var(--muted)]">
+            LTA has not published this bus GPS yet. The stop is on the map; the numbered badge appears when a location is reported.
+          </p>
+        ) : null}
       </div>
     </section>
   );

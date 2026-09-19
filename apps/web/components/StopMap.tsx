@@ -5,6 +5,7 @@ import L from "leaflet";
 import { Minus, Plus } from "lucide-react";
 import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { busesForMapFit } from "@/lib/buses";
 import type { Stop } from "@/lib/types";
 
 export type BusMarker = {
@@ -73,11 +74,16 @@ function Recenter({
   const map = useMap();
   const fitKey = fit?.map((point) => `${point[0].toFixed(5)},${point[1].toFixed(5)}`).join("|") ?? "";
   useEffect(() => {
-    if (fit && fit.length >= 2) {
+    map.invalidateSize({ animate: false });
+    if (fit && fit.length >= 1) {
+      const size = map.getSize();
+      const padX = Math.min(32, Math.max(12, size.x * 0.08));
+      const padTop = Math.min(48, Math.max(24, size.y * 0.12));
+      const padBottom = Math.min(bottomPad + 16, Math.max(24, size.y * 0.36));
       map.fitBounds(fit, {
-        paddingTopLeft: [32, 32],
-        paddingBottomRight: [32, 32 + bottomPad],
-        maxZoom: 17,
+        paddingTopLeft: [padX, padTop],
+        paddingBottomRight: [padX, padBottom],
+        maxZoom: 16,
         animate: true,
       });
       return;
@@ -143,7 +149,10 @@ export function StopMap({
   showStops = true,
   showBuses = true,
   showUser = false,
+  userLat,
+  userLng,
   bottomPad = 0,
+  fitToBus = false,
   onSelectStop,
   onSelectBus,
 }: {
@@ -155,35 +164,42 @@ export function StopMap({
   showStops?: boolean;
   showBuses?: boolean;
   showUser?: boolean;
+  userLat?: number;
+  userLng?: number;
   bottomPad?: number;
+  fitToBus?: boolean;
   onSelectStop?: (code: string) => void;
   onSelectBus?: (serviceNo: string) => void;
 }) {
   const focus = stops.find((stop) => stop.code === selectedCode);
+  const userPosition =
+    userLat != null && userLng != null && Math.abs(userLat) > 0.1 ? ([userLat, userLng] as [number, number]) : null;
+  const cameraLat = focus?.latitude ?? userPosition?.[0] ?? lat;
+  const cameraLng = focus?.longitude ?? userPosition?.[1] ?? lng;
   const fit =
-    buses.length === 1 && focus
-      ? [
-          [buses[0].lat, buses[0].lng] as [number, number],
+    fitToBus && focus && buses.length > 0
+      ? ([
           [focus.latitude, focus.longitude] as [number, number],
-        ]
+          ...busesForMapFit(focus, buses).map((bus) => [bus.lat, bus.lng] as [number, number]),
+        ])
       : undefined;
   return (
     <MapContainer
-      center={[lat, lng]}
+      center={[cameraLat, cameraLng]}
       zoom={17}
       className="bf-map-light h-full w-full"
       attributionControl
       zoomControl={false}
       scrollWheelZoom
     >
-      <Recenter lat={focus?.latitude ?? lat} lng={focus?.longitude ?? lng} bottomPad={bottomPad} fit={fit} />
+      <Recenter lat={cameraLat} lng={cameraLng} bottomPad={bottomPad} fit={fit} />
       <InvalidateSize />
       <ZoomControls />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {showUser ? <Marker position={[lat, lng]} icon={userIcon()} zIndexOffset={500} /> : null}
+      {showUser && userPosition ? <Marker position={userPosition} icon={userIcon()} zIndexOffset={500} /> : null}
       {showStops
         ? stops.map((stop) => (
             <Marker
@@ -203,7 +219,7 @@ export function StopMap({
               key={`${bus.serviceNo}-${index}`}
               position={[bus.lat, bus.lng]}
               icon={busIcon(bus.serviceNo)}
-              zIndexOffset={300}
+              zIndexOffset={800}
               eventHandlers={{
                 click: () => onSelectBus?.(bus.serviceNo),
               }}

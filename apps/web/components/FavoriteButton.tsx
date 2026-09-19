@@ -7,9 +7,11 @@ import { isFavorite, toggleFavorite, type FavoriteStop } from "@/lib/favorites";
 export function FavoriteButton({
   stop,
   iconOnly = false,
+  onChange,
 }: {
   stop: FavoriteStop;
   iconOnly?: boolean;
+  onChange?: (saved: boolean) => void;
 }) {
   const [saved, setSaved] = useState(false);
 
@@ -23,7 +25,9 @@ export function FavoriteButton({
       onClick={(event) => {
         event.stopPropagation();
         const next = toggleFavorite(stop);
-        setSaved(next.some((item) => item.code === stop.code));
+        const savedNow = next.some((item) => item.code === stop.code);
+        setSaved(savedNow);
+        onChange?.(savedNow);
       }}
       className={
         iconOnly

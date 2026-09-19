@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { ServiceTimes } from "@/components/ServiceTimes";
 import { ArrivalSkeleton } from "@/components/Skeleton";
 import { fetchStop } from "@/lib/api";
+import { busesFromServices, uniqueBuses } from "@/lib/buses";
 import { clockTime, walkParts } from "@/lib/format";
 import type { Stop } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace";
@@ -59,6 +60,7 @@ function StopPageInner() {
   }
 
   const mapStops = stops.some((item) => item.code === stop.code) ? stops : [stop, ...stops];
+  const buses = uniqueBuses(busesFromServices(arrivals?.services ?? []));
   const walk = walkParts(stop.distance_m);
 
   return (
@@ -140,16 +142,22 @@ function StopPageInner() {
         {arrivals && arrivals.services.length === 0 ? (
           <p className="px-1 py-3 text-sm text-[var(--muted)]">No services reported right now.</p>
         ) : null}
-        {arrivals?.services.map((service) => (
-          <ServiceTimes key={service.service_no} service={service} stopCode={stop.code} />
-        ))}
+        {arrivals && arrivals.services.length > 0 ? (
+          <div className="overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--bg)]">
+            {arrivals.services.map((service) => (
+              <ServiceTimes key={service.service_no} service={service} stopCode={stop.code} />
+            ))}
+          </div>
+        ) : null}
       </div>
       <div className="relative min-h-[220px] flex-1 overflow-hidden rounded-xl border border-[var(--line)] md:hidden">
         <DynamicStopMap
           lat={stop.latitude || location?.lat || 1.35}
           lng={stop.longitude || location?.lng || 103.85}
           stops={mapStops}
+          buses={buses}
           selectedCode={stop.code}
+          fitToBus={buses.length > 0}
         />
       </div>
     </section>

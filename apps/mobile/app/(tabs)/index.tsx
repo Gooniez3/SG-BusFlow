@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
-import { Pressable, RefreshControl, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { MapPin, Navigation, RefreshCw } from "lucide-react-native";
 import { useRouter } from "expo-router";
-import { Navigation, RefreshCw } from "lucide-react-native";
-import { Card, Muted, Screen, ScrollView, Title } from "@/components/Ui";
+
+import { EmptyState, Muted, Screen, Title } from "@/components/Ui";
+import { StopPreview } from "@/components/StopPreview";
+import { IconButton, ThemeToggle } from "@/components/ThemeToggle";
 import { fetchNearby } from "@/lib/api";
-import { arrivalShort, walkParts } from "@/lib/format";
+import { readFavorites, toggleFavorite } from "@/lib/favorites";
 import { requestUserLocation, type UserLocation } from "@/lib/location";
 import { useStopLive } from "@/lib/live";
 import { usePalette } from "@/lib/theme";
 import type { Stop } from "@/lib/types";
+import { useCallback, useEffect, useState } from "react";
 
 export default function NearbyScreen() {
   const palette = usePalette();
@@ -18,8 +21,8 @@ export default function NearbyScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [openCode, setOpenCode] = useState<string | null>(null);
+  const [savedCodes, setSavedCodes] = useState<string[]>([]);
   const live = useStopLive(openCode);
-  const arrivals = live.data;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -40,22 +43,29 @@ export default function NearbyScreen() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    void readFavorites().then((items) => setSavedCodes(items.map((item) => item.code)));
+  }, []);
+
   return (
-    <Screen>
-      <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
-      >
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <View style={{ flex: 1 }}>
-            <Title>Nearby</Title>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 }}>
-              <Navigation color={palette.muted} size={14} />
-              <Muted>{location?.isDemo ? `Demo pin · ${location.label}` : "Using your current location"}</Muted>
-            </View>
+    <Screen refreshing={loading} onRefresh={load}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Title>Nearby</Title>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
+            <Navigation color={palette.muted} size={14} strokeWidth={2} />
+            <Muted>
+              {loading && !location
+                ? "Finding your location"
+                : location?.isDemo
+                  ? `Demo pin · ${location.label}`
+                  : "Using your current location"}
+            </Muted>
           </View>
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Pressable
-            onPress={load}
+            onPress={() => void load()}
             style={{
               flexDirection: "row",
               alignItems: "center",
@@ -65,75 +75,58 @@ export default function NearbyScreen() {
               borderRadius: 999,
               paddingHorizontal: 12,
               height: 36,
+              backgroundColor: palette.card,
             }}
           >
-            <RefreshCw color={palette.muted} size={14} />
+            <RefreshCw color={palette.muted} size={14} strokeWidth={2} />
             <Text style={{ color: palette.muted, fontSize: 12 }}>Refresh</Text>
           </Pressable>
+          <IconButton onPress={() => router.push("/map")}>
+            <MapPin size={16} color={palette.muted} strokeWidth={2} />
+          </IconButton>
+          <ThemeToggle />
         </View>
+      </View>
 
-        {error ? (
-          <Card>
-            <Text style={{ color: palette.ink, fontWeight: "600" }}>Could not load nearby stops</Text>
-            <Muted>{error}</Muted>
-          </Card>
-        ) : null}
+      {error ? (
+        <EmptyState title="Could not load nearby stops" detail="Try again in a moment." />
+      ) : null}
 
-        <View style={{ gap: 10, marginTop: 16 }}>
-          {stops.map((stop) => {
-            const walk = walkParts(stop.distance_m);
-            const selected = openCode === stop.code;
-            const liveServices = selected ? arrivals?.services : undefined;
-            return (
-              <Card key={stop.code} onPress={() => setOpenCode(selected ? null : stop.code)}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={{ color: palette.ink, fontSize: 16, fontWeight: "600" }}>{stop.name}</Text>
-                    <Muted>
-                      {stop.code}
-                      {stop.road_name ? ` · ${stop.road_name}` : ""}
-                    </Muted>
-                  </View>
-                  {walk ? <Muted>{walk.metres} m</Muted> : null}
-                </View>
-                {selected ? (
-                  <View style={{ marginTop: 12, gap: 8 }}>
-                    {liveServices?.slice(0, 4).map((service) => {
-                      const next = arrivalShort(service.arrivals[0]?.minutes);
-                      return (
-                        <Pressable
-                          key={service.service_no}
-                          onPress={() =>
-                            router.push({
-                              pathname: "/live/[serviceNo]",
-                              params: { serviceNo: service.service_no, stop: stop.code },
-                            })
-                          }
-                        >
-                          <Text style={{ color: palette.ink, fontWeight: "700" }}>
-                            {service.service_no}
-                            <Text style={{ color: palette.muted, fontWeight: "500" }}>
-                              {"  "}
-                              {next === "Here" ? "Here" : next ? `${next} min` : "—"}
-                            </Text>
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                    <Pressable
-                      onPress={() =>
-                        router.push({ pathname: "/stop/[code]", params: { code: stop.code } })
-                      }
-                    >
-                      <Text style={{ color: palette.accent, fontWeight: "600" }}>View stop</Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-              </Card>
-            );
-          })}
+      {loading && stops.length === 0 ? (
+        <View style={{ gap: 8 }}>
+          <View style={{ height: 72, borderRadius: 12, backgroundColor: palette.line }} />
+          <View style={{ height: 72, borderRadius: 12, backgroundColor: palette.line }} />
+          <View style={{ height: 72, borderRadius: 12, backgroundColor: palette.line }} />
         </View>
-      </ScrollView>
+      ) : null}
+
+      {!loading && stops.length === 0 && !error ? (
+        <EmptyState title="No stops nearby" detail="Try a wider search or another location." />
+      ) : null}
+
+      <View style={{ gap: 8 }}>
+        {stops.map((stop) => (
+          <StopPreview
+            key={stop.code}
+            stop={stop}
+            arrivals={live.data?.bus_stop_code === stop.code ? live.data : undefined}
+            selected={openCode === stop.code}
+            loading={openCode === stop.code && !live.data}
+            fromLat={location?.lat}
+            fromLng={location?.lng}
+            favorite={savedCodes.includes(stop.code)}
+            onSelect={() => setOpenCode(openCode === stop.code ? null : stop.code)}
+            onToggleFavorite={async () => {
+              const next = await toggleFavorite({
+                code: stop.code,
+                name: stop.name,
+                road_name: stop.road_name,
+              });
+              setSavedCodes(next.map((item) => item.code));
+            }}
+          />
+        ))}
+      </View>
     </Screen>
   );
 }

@@ -26,38 +26,42 @@ export function ServiceTimes({
     ? `/live/${encodeURIComponent(service.service_no)}?stop=${stopCode}`
     : `/services/${encodeURIComponent(service.service_no)}`;
   const destination = next?.destination_name;
-  const rowClass = "flex min-h-12 items-center gap-3 py-1.5";
+  const rowClass =
+    "flex min-h-10 items-center gap-2 border-b border-[var(--line)] px-2 py-1 last:border-b-0";
   const body = (
     <>
       <span className="min-w-0 flex-1">
-        <span className="block font-mono text-[17px] font-semibold leading-tight">
+        <span className="block font-mono text-[15px] font-semibold leading-tight">
           {service.service_no}
         </span>
-        <span className="block truncate text-xs text-[var(--muted)]">
+        <span className="block truncate text-[11px] leading-tight text-[var(--muted)]">
           {destination ?? service.operator}
         </span>
       </span>
-      <span className="grid w-[9.5rem] shrink-0 grid-cols-3 text-center">
+      <span className="grid w-[8.75rem] shrink-0 grid-cols-3 overflow-hidden rounded-md border border-[var(--line)] bg-[var(--card)]">
         {slots.map((arrival, index) => {
           const label = arrival ? arrivalShort(arrival.minutes) : null;
           const here = label === "Here";
           return (
-            <span key={`${service.service_no}-${index}`} className="flex flex-col items-center">
+            <span
+              key={`${service.service_no}-${index}`}
+              className="flex flex-col items-center justify-center border-l border-[var(--line)] px-0.5 py-1 first:border-l-0"
+            >
               <span
-                className={`h-6 font-medium tabular-nums ${
+                className={`h-4 text-[13px] font-medium tabular-nums leading-none ${
                   here ? "text-[var(--warn)]" : "text-[var(--ink)]"
                 }`}
               >
-                {label ?? ""}
+                {label ?? "—"}
               </span>
               {arrival ? (
                 <span
-                  className="mt-1 h-1 w-8 rounded-full"
+                  className="mt-1 h-0.5 w-6 rounded-full"
                   style={{ background: loadBarColor(arrival.load) }}
                   aria-hidden
                 />
               ) : (
-                <span className="mt-1 h-1 w-8" />
+                <span className="mt-1 h-0.5 w-6" />
               )}
             </span>
           );

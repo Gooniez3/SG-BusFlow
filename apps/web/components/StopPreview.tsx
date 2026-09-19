@@ -1,20 +1,36 @@
 "use client";
 
-import { Footprints, Navigation, RefreshCw } from "lucide-react";
+import { Footprints, RefreshCw } from "lucide-react";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import { ServiceTimes } from "@/components/ServiceTimes";
 import { bearingTo, walkParts } from "@/lib/format";
 import type { Stop, StopArrivalsResponse } from "@/lib/types";
 
 function DirectionArrow({ bearing }: { bearing: number | null }) {
-  if (bearing == null) return <span className="w-4 shrink-0" />;
+  if (bearing == null) {
+    return (
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--on-accent)]" aria-hidden>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 21s7-5.33 7-11a7 7 0 1 0-14 0c0 5.67 7 11 7 11Z" />
+          <circle cx="12" cy="10" r="1.6" fill="var(--accent)" />
+        </svg>
+      </span>
+    );
+  }
   return (
     <span
-      className="flex w-4 shrink-0 justify-center text-[var(--muted)]"
-      style={{ transform: `rotate(${bearing}deg)` }}
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[var(--on-accent)]"
       aria-hidden
     >
-      <Navigation size={12} strokeWidth={2.4} />
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        style={{ transform: `rotate(${bearing}deg)` }}
+      >
+        <path d="M12 2.2 20.6 21.2 12 16.6 3.4 21.2 12 2.2Z" />
+      </svg>
     </span>
   );
 }
@@ -28,6 +44,7 @@ export function StopPreview({
   fromLng,
   onSelect,
   onRefresh,
+  onFavoriteChange,
 }: {
   stop: Stop;
   arrivals?: StopArrivalsResponse | null;
@@ -37,6 +54,7 @@ export function StopPreview({
   fromLng?: number;
   onSelect?: () => void;
   onRefresh?: () => void;
+  onFavoriteChange?: (saved: boolean) => void;
 }) {
   const walk = walkParts(stop.distance_m);
   const bearing =
@@ -50,7 +68,7 @@ export function StopPreview({
 
   return (
     <article className={`rounded-xl border border-[var(--line)] bg-[var(--card)] ${selected ? "border-[var(--accent)]" : ""}`}>
-      <button type="button" onClick={onSelect} className="flex w-full items-start gap-3 px-3 py-3 text-left">
+      <button type="button" onClick={onSelect} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left">
         <DirectionArrow bearing={bearing} />
         <span className="min-w-0 flex-1">
           <span className="block font-medium leading-tight">{stop.name}</span>
@@ -67,7 +85,7 @@ export function StopPreview({
         ) : null}
       </button>
       {selected ? (
-        <div className="border-t border-[var(--line)] px-3 pb-3 pt-2">
+        <div className="border-t border-[var(--line)] px-2 pb-2 pt-1.5">
           <div className="mb-1 flex justify-end">
             <FavoriteButton
               iconOnly
@@ -76,6 +94,7 @@ export function StopPreview({
                 name: stop.name,
                 road_name: stop.road_name,
               }}
+              onChange={onFavoriteChange}
             />
             {onRefresh ? (
               <button
@@ -97,9 +116,13 @@ export function StopPreview({
               <div className="h-8 animate-pulse rounded bg-[var(--line)]" />
             </div>
           ) : null}
-          {arrivals?.services.map((service) => (
-            <ServiceTimes key={service.service_no} service={service} stopCode={stop.code} />
-          ))}
+          {arrivals && arrivals.services.length > 0 ? (
+            <div className="overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--bg)]">
+              {arrivals.services.map((service) => (
+                <ServiceTimes key={service.service_no} service={service} stopCode={stop.code} />
+              ))}
+            </div>
+          ) : null}
           {arrivals && arrivals.services.length === 0 ? (
             <p className="py-3 text-sm text-[var(--muted)]">No services reported right now.</p>
           ) : null}

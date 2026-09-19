@@ -91,7 +91,10 @@ export function MobileMapOverlay() {
       <div className="pointer-events-auto absolute inset-x-0 bottom-0 flex flex-col items-end">
         <button
           type="button"
-          onClick={reload}
+          onClick={() => {
+            setSelectedCode(null);
+            reload();
+          }}
           className="bf-shadow-md mb-3 mr-3 flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--card)] text-[var(--ink)]"
           aria-label="Use current location"
         >
@@ -347,9 +350,13 @@ function SelectedArrivals({
           onRetry={onRetry}
         />
       ) : null}
-      {preview?.services.map((service) => (
-        <ServiceTimes key={service.service_no} service={service} stopCode={stopCode} />
-      ))}
+      {preview && preview.services.length > 0 ? (
+        <div className="overflow-hidden rounded-lg border border-[var(--line)] bg-[var(--bg)]">
+          {preview.services.map((service) => (
+            <ServiceTimes key={service.service_no} service={service} stopCode={stopCode} />
+          ))}
+        </div>
+      ) : null}
       {preview && preview.services.length === 0 ? (
         <p className="py-3 text-sm text-[var(--muted)]">No services reported right now.</p>
       ) : null}

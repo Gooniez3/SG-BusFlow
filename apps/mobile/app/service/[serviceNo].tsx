@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { Pressable, Text } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Heart } from "lucide-react-native";
-import { Card, Muted, Screen, ScrollView } from "@/components/Ui";
+
+import { PageHeader } from "@/components/PageHeader";
+import { Card, Muted } from "@/components/Ui";
 import { fetchService } from "@/lib/api";
 import { toggleFavoriteService } from "@/lib/favorites";
 import { usePalette } from "@/lib/theme";
@@ -11,6 +13,7 @@ import type { ServiceDetailResponse } from "@/lib/types";
 export default function ServiceScreen() {
   const { serviceNo } = useLocalSearchParams<{ serviceNo: string }>();
   const palette = usePalette();
+  const router = useRouter();
   const [service, setService] = useState<ServiceDetailResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,10 +27,19 @@ export default function ServiceScreen() {
   const primary = service?.directions[0];
 
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Text style={{ color: palette.muted, fontSize: 11, letterSpacing: 1.6 }}>BUS SERVICE</Text>
-        <Text style={{ color: palette.ink, fontSize: 36, fontWeight: "700" }}>{serviceNo?.toUpperCase()}</Text>
+    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <PageHeader
+        onBack={() => router.back()}
+        title={
+          <View>
+            <Text style={{ color: palette.muted, fontSize: 11, letterSpacing: 1.6, fontWeight: "500" }}>BUS SERVICE</Text>
+            <Text style={{ color: palette.ink, fontSize: 32, fontWeight: "700", letterSpacing: -0.8 }}>
+              {serviceNo?.toUpperCase()}
+            </Text>
+          </View>
+        }
+      />
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
         {error ? <Muted>{error}</Muted> : null}
         {primary ? (
           <Card>
@@ -53,12 +65,12 @@ export default function ServiceScreen() {
                 height: 36,
               }}
             >
-              <Heart color={palette.accent} size={14} />
+              <Heart color={palette.accent} size={14} strokeWidth={2} />
               <Text style={{ color: palette.ink }}>Save service</Text>
             </Pressable>
           </Card>
         ) : null}
       </ScrollView>
-    </Screen>
+    </View>
   );
 }
