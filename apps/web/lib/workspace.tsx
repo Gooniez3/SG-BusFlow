@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { fetchArrivals, fetchNearby } from "./api";
+import { fetchNearby } from "./api";
+import { useStopLive } from "./live";
 import { requestUserLocation, type UserLocation } from "./location";
 import type { Stop, StopArrivalsResponse } from "./types";
 
@@ -28,10 +29,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [stopsLoading, setStopsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
-  const [preview, setPreview] = useState<StopArrivalsResponse | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+
+  const live = useStopLive(selectedCode);
 
   const reload = useCallback(() => setReloadToken((value) => value + 1), []);
 
@@ -62,33 +62,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     };
   }, [reloadToken]);
 
-  useEffect(() => {
-    if (!selectedCode) {
-      setPreview(null);
-      setPreviewError(null);
-      setPreviewLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setPreviewLoading(true);
-    setPreviewError(null);
-    fetchArrivals(selectedCode)
-      .then((data) => {
-        if (!cancelled) setPreview(data);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setPreview(null);
-          setPreviewError(err instanceof Error ? err.message : "Live arrivals unavailable");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setPreviewLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedCode]);
+  const preview = live.data;
+  const previewError = live.error;
+  const previewLoading = Boolean(selectedCode) && !live.data && !live.error;
 
   const value = useMemo(
     () => ({

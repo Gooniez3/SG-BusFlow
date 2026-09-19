@@ -10,6 +10,10 @@ class CacheStore:
     def __init__(self, redis: Redis) -> None:
         self._redis = redis
 
+    @property
+    def redis(self) -> Redis:
+        return self._redis
+
     def set_json(self, key: str, value: Any, ttl_seconds: int) -> None:
         if hasattr(value, "model_dump_json"):
             payload = value.model_dump_json()

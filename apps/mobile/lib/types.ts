@@ -25,6 +25,7 @@ export type Arrival = {
   origin_code?: string | null;
   destination_code?: string | null;
   destination_name?: string | null;
+  bus_id?: string | null;
 };
 
 export type ServiceArrivals = {

@@ -42,6 +42,7 @@ class Arrival(BaseModel):
     origin_code: str | None = None
     destination_code: str | None = None
     destination_name: str | None = None
+    bus_id: str | None = None
 
 
 class ServiceArrivals(BaseModel):

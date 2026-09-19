@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from services.cache.keys import arrivals_key
+from services.cache.live import publish_stop_arrivals
 from services.cache.models import CachedStopArrivals
 from services.cache.store import CacheStore
 from services.cache.transform import transform_arrivals
@@ -23,6 +24,7 @@ def cache_stop_arrivals(
         payload = get_bus_arrivals(client, bus_stop_code)
         cached = transform_arrivals(payload, now=now, stale=False)
         store.set_json(key, cached, ttl_seconds)
+        publish_stop_arrivals(store.redis, cached)
         return cached
     except LTARequestError:
         raw = store.get_text(key)

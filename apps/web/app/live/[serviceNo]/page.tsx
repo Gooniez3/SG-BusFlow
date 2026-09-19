@@ -9,29 +9,29 @@ import { PageHeader } from "@/components/PageHeader";
 import { ServiceFavoriteButton } from "@/components/ServiceFavoriteButton";
 import { ServiceTimes } from "@/components/ServiceTimes";
 import { loadBarColor, loadCopy } from "@/lib/format";
-import { fetchArrivals, fetchStop } from "@/lib/transport";
-import type { Arrival, Stop, StopArrivalsResponse } from "@/lib/types";
+import { fetchStop } from "@/lib/transport";
+import type { Arrival, Stop } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace";
 
 function LiveBusInner() {
   const params = useParams<{ serviceNo: string }>();
   const searchParams = useSearchParams();
-  const { setSelectedCode, location } = useWorkspace();
+  const { setSelectedCode, location, preview, previewError } = useWorkspace();
   const serviceNo = params.serviceNo.toUpperCase();
   const stopCode = searchParams.get("stop");
   const [stop, setStop] = useState<Stop | null>(null);
-  const [arrivals, setArrivals] = useState<StopArrivalsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const liveData = preview?.bus_stop_code === stopCode ? preview : null;
+  const service = liveData?.services.find((item) => item.service_no === serviceNo);
 
   useEffect(() => {
     if (stopCode) setSelectedCode(stopCode);
     if (!stopCode) return;
     let cancelled = false;
-    Promise.all([fetchStop(stopCode), fetchArrivals(stopCode)])
-      .then(([stopData, arrivalData]) => {
+    Promise.all([fetchStop(stopCode)])
+      .then(([stopData]) => {
         if (!cancelled) {
           setStop(stopData);
-          setArrivals(arrivalData);
         }
       })
       .catch((err: unknown) => {
@@ -42,7 +42,6 @@ function LiveBusInner() {
     };
   }, [stopCode, setSelectedCode]);
 
-  const service = arrivals?.services.find((item) => item.service_no === serviceNo);
   const next: Arrival | undefined = service?.arrivals[0];
   const load = loadCopy(next?.load);
   const buses = useMemo(() => {
@@ -69,10 +68,10 @@ function LiveBusInner() {
   if (!stopCode) {
     return <ErrorState title="Choose a stop first" detail="Open a stop, then track a bus from live arrivals." />;
   }
-  if (error) {
+  if (error || previewError) {
     return <ErrorState title="Live bus unavailable" detail="We couldn't retrieve the latest arrival information." />;
   }
-  if (!stop || !arrivals) {
+  if (!stop || !liveData) {
     return <div className="h-24 animate-pulse rounded-xl bg-[var(--line)]" />;
   }
 
@@ -89,7 +88,7 @@ function LiveBusInner() {
         }
         extra={<ServiceFavoriteButton iconOnly serviceNo={serviceNo} operator={service?.operator} />}
       />
-      {arrivals ? <LiveBadge cachedAt={arrivals.cached_at} stale={arrivals.stale} /> : null}
+      {liveData ? <LiveBadge cachedAt={liveData.cached_at} stale={liveData.stale} /> : null}
       <div className="rounded-xl border border-[var(--line)] bg-[var(--card)] px-3 py-2">
         {service ? (
           <ServiceTimes service={service} stopCode={stopCode} linked={false} />

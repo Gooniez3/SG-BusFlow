@@ -9,8 +9,9 @@ import { LiveBadge } from "@/components/LiveBadge";
 import { PageHeader } from "@/components/PageHeader";
 import { ServiceFavoriteButton } from "@/components/ServiceFavoriteButton";
 import { ServiceTimes } from "@/components/ServiceTimes";
-import { fetchArrivals, fetchService, fetchStop } from "@/lib/transport";
-import type { ServiceArrivals, ServiceDetailResponse, Stop, StopArrivalsResponse } from "@/lib/types";
+import { fetchService, fetchStop } from "@/lib/transport";
+import { useServiceLive } from "@/lib/live";
+import type { ServiceDetailResponse, Stop } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace";
 
 function routeCopy(
@@ -27,13 +28,17 @@ function routeCopy(
 export default function ServicePage() {
   const params = useParams<{ serviceNo: string }>();
   const serviceNo = params.serviceNo.toUpperCase();
-  const { selectedCode, stops, location } = useWorkspace();
+  const { selectedCode, stops, location, preview } = useWorkspace();
   const [service, setService] = useState<ServiceDetailResponse | null>(null);
   const [names, setNames] = useState<Record<string, string>>({});
   const [liveStop, setLiveStop] = useState<Stop | null>(null);
-  const [live, setLive] = useState<ServiceArrivals | null>(null);
-  const [cachedAt, setCachedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const trackStop = selectedCode ?? stops[0]?.code ?? null;
+  const previewMatch =
+    preview && trackStop && preview.bus_stop_code === trackStop
+      ? preview.services.find((item) => item.service_no === serviceNo) ?? null
+      : null;
+  const liveFeed = useServiceLive(previewMatch ? null : serviceNo, previewMatch ? null : trackStop);
 
   useEffect(() => {
     fetchService(serviceNo)
@@ -61,39 +66,38 @@ export default function ServicePage() {
   }, [serviceNo]);
 
   useEffect(() => {
-    const codes = [...new Set([selectedCode, ...stops.map((stop) => stop.code)].filter(Boolean) as string[])].slice(
-      0,
-      8,
-    );
-    if (codes.length === 0) {
-      setLive(null);
+    if (!trackStop) {
       setLiveStop(null);
       return;
     }
+    const found = stops.find((stop) => stop.code === trackStop) ?? null;
+    if (found) {
+      setLiveStop(found);
+      return;
+    }
     let cancelled = false;
-    Promise.allSettled(
-      codes.map(async (code) => {
-        const payload: StopArrivalsResponse = await fetchArrivals(code);
-        const match = payload.services.find((item) => item.service_no === serviceNo) ?? null;
-        return { code, payload, match };
-      }),
-    ).then((results) => {
-      if (cancelled) return;
-      for (const result of results) {
-        if (result.status !== "fulfilled" || !result.value.match) continue;
-        const found = stops.find((stop) => stop.code === result.value.code) ?? null;
-        setLive(result.value.match);
-        setCachedAt(result.value.payload.cached_at);
-        setLiveStop(found);
-        return;
-      }
-      setLive(null);
-      setLiveStop(null);
-    });
+    fetchStop(trackStop)
+      .then((stop) => {
+        if (!cancelled) setLiveStop(stop);
+      })
+      .catch(() => {
+        if (!cancelled) setLiveStop(null);
+      });
     return () => {
       cancelled = true;
     };
-  }, [selectedCode, serviceNo, stops]);
+  }, [trackStop, stops]);
+
+  const live = previewMatch
+    ? previewMatch
+    : liveFeed.data
+      ? {
+          service_no: liveFeed.data.service_no,
+          operator: liveFeed.data.operator ?? "",
+          arrivals: liveFeed.data.arrivals,
+        }
+      : null;
+  const cachedAt = previewMatch && preview ? preview.cached_at : liveFeed.data?.cached_at ?? null;
 
   const buses = useMemo(() => {
     const arrival = (live?.arrivals ?? []).find(

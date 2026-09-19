@@ -3,21 +3,23 @@ import { Pressable, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Heart } from "lucide-react-native";
 import { Card, Muted, Screen, ScrollView, ServiceRow } from "@/components/Ui";
-import { fetchArrivals, fetchStop } from "@/lib/api";
+import { fetchStop } from "@/lib/api";
 import { isFavorite, toggleFavorite } from "@/lib/favorites";
 import { relativeUpdated, walkParts } from "@/lib/format";
 import { requestUserLocation } from "@/lib/location";
+import { useStopLive } from "@/lib/live";
 import { usePalette } from "@/lib/theme";
-import type { Stop, StopArrivalsResponse } from "@/lib/types";
+import type { Stop } from "@/lib/types";
 
 export default function StopScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
   const palette = usePalette();
   const router = useRouter();
   const [stop, setStop] = useState<Stop | null>(null);
-  const [arrivals, setArrivals] = useState<StopArrivalsResponse | null>(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const live = useStopLive(code ?? null);
+  const arrivals = live.data;
 
   useEffect(() => {
     if (!code) return;
@@ -25,14 +27,12 @@ export default function StopScreen() {
     void (async () => {
       const location = await requestUserLocation();
       try {
-        const [stopData, arrivalData, favorite] = await Promise.all([
+        const [stopData, favorite] = await Promise.all([
           fetchStop(code, location.lat, location.lng),
-          fetchArrivals(code),
           isFavorite(code),
         ]);
         if (cancelled) return;
         setStop(stopData);
-        setArrivals(arrivalData);
         setSaved(favorite);
         setError(null);
       } catch (err) {

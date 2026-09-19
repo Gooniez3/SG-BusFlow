@@ -4,6 +4,7 @@ import logging
 import time
 
 from services.cache.arrivals import cache_stop_arrivals
+from services.cache.live import resolve_watch_codes
 from services.lta.client import LTAError
 
 logger = logging.getLogger("workers")
@@ -63,5 +64,6 @@ def ingest_arrivals(client, store, settings, stop_codes: list[str]) -> None:
 
 def run_arrivals_loop(client, store, settings, stop_codes: list[str]) -> None:
     while True:
-        ingest_arrivals(client, store, settings, stop_codes)
+        codes = resolve_watch_codes(store.redis, stop_codes)
+        ingest_arrivals(client, store, settings, codes)
         time.sleep(settings.arrival_poll_interval_seconds)

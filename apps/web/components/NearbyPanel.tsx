@@ -6,7 +6,6 @@ import { ErrorState } from "@/components/ErrorState";
 import { EmptyState } from "@/components/EmptyState";
 import { StopCardSkeleton } from "@/components/Skeleton";
 import { StopPreview } from "@/components/StopPreview";
-import { useStopArrivals } from "@/lib/useStopArrivals";
 import { useWorkspace } from "@/lib/workspace";
 
 export function NearbyPanel() {
@@ -18,11 +17,10 @@ export function NearbyPanel() {
     error,
     selectedCode,
     setSelectedCode,
+    preview,
+    previewLoading,
     reload,
   } = useWorkspace();
-  const { data: arrivals, loading: arrivalsLoading, reload: reloadArrivals } = useStopArrivals(
-    selectedCode ? [selectedCode] : [],
-  );
 
   return (
     <div className="space-y-3">
@@ -74,15 +72,14 @@ export function NearbyPanel() {
             <StopPreview
               key={stop.code}
               stop={stop}
-              arrivals={arrivals[stop.code]}
+              arrivals={preview?.bus_stop_code === stop.code ? preview : undefined}
               selected={selectedCode === stop.code}
-              loading={arrivalsLoading && selectedCode === stop.code}
+              loading={previewLoading && selectedCode === stop.code}
               fromLat={location?.lat}
               fromLng={location?.lng}
               onSelect={() =>
                 setSelectedCode(selectedCode === stop.code ? null : stop.code)
               }
-              onRefresh={reloadArrivals}
             />
           ))
         )}

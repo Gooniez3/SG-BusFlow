@@ -10,22 +10,22 @@ import { LiveBadge } from "@/components/LiveBadge";
 import { PageHeader } from "@/components/PageHeader";
 import { ServiceTimes } from "@/components/ServiceTimes";
 import { ArrivalSkeleton } from "@/components/Skeleton";
-import { fetchArrivals, fetchStop } from "@/lib/api";
+import { fetchStop } from "@/lib/api";
 import { clockTime, walkParts } from "@/lib/format";
-import type { Stop, StopArrivalsResponse } from "@/lib/types";
+import type { Stop } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace";
 
 function StopPageInner() {
   const params = useParams<{ code: string }>();
   const searchParams = useSearchParams();
-  const { location, setSelectedCode, stops } = useWorkspace();
+  const { location, setSelectedCode, stops, preview, previewError } = useWorkspace();
   const code = params.code;
   const lat = searchParams.get("lat") ?? (location ? String(location.lat) : null);
   const lng = searchParams.get("lng") ?? (location ? String(location.lng) : null);
   const [stop, setStop] = useState<Stop | null>(null);
-  const [arrivals, setArrivals] = useState<StopArrivalsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [arrivalError, setArrivalError] = useState<string | null>(null);
+  const arrivals = preview?.bus_stop_code === code ? preview : null;
+  const arrivalError = previewError;
   const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
@@ -45,26 +45,9 @@ function StopPageInner() {
         }
       }
     }
-    function refreshArrivals() {
-      fetchArrivals(code)
-        .then((data) => {
-          if (!cancelled) {
-            setArrivals(data);
-            setArrivalError(null);
-          }
-        })
-        .catch((err: unknown) => {
-          if (!cancelled) {
-            setArrivalError(err instanceof Error ? err.message : "Live arrivals unavailable");
-          }
-        });
-    }
     void load();
-    refreshArrivals();
-    const timer = window.setInterval(refreshArrivals, 20000);
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
     };
   }, [code, lat, lng, setSelectedCode, retryTick]);
 

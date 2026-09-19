@@ -2,18 +2,26 @@ import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Card, Muted, Screen, ScrollView, ServiceRow } from "@/components/Ui";
-import { fetchArrivals, fetchStop } from "@/lib/api";
+import { fetchStop } from "@/lib/api";
 import { loadCopy, relativeUpdated } from "@/lib/format";
+import { useServiceLive } from "@/lib/live";
 import { usePalette } from "@/lib/theme";
-import type { Stop, StopArrivalsResponse } from "@/lib/types";
+import type { Stop } from "@/lib/types";
 
 export default function LiveScreen() {
   const { serviceNo, stop: stopCode } = useLocalSearchParams<{ serviceNo: string; stop?: string }>();
   const palette = usePalette();
   const [stop, setStop] = useState<Stop | null>(null);
-  const [arrivals, setArrivals] = useState<StopArrivalsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const service = arrivals?.services.find((item) => item.service_no === serviceNo?.toUpperCase());
+  const live = useServiceLive(serviceNo?.toUpperCase() ?? null, stopCode ?? null);
+  const service = live.data
+    ? {
+        service_no: live.data.service_no,
+        operator: live.data.operator ?? "",
+        arrivals: live.data.arrivals,
+      }
+    : undefined;
+  const arrivals = live.data;
 
   useEffect(() => {
     if (!stopCode) {
@@ -21,11 +29,10 @@ export default function LiveScreen() {
       return;
     }
     let cancelled = false;
-    Promise.all([fetchStop(stopCode), fetchArrivals(stopCode)])
-      .then(([stopData, arrivalData]) => {
+    Promise.all([fetchStop(stopCode)])
+      .then(([stopData]) => {
         if (cancelled) return;
         setStop(stopData);
-        setArrivals(arrivalData);
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : "Could not load live bus");

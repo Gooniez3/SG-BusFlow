@@ -3,21 +3,23 @@ import { Pressable, RefreshControl, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Navigation, RefreshCw } from "lucide-react-native";
 import { Card, Muted, Screen, ScrollView, Title } from "@/components/Ui";
-import { fetchArrivals, fetchNearby } from "@/lib/api";
+import { fetchNearby } from "@/lib/api";
 import { arrivalShort, walkParts } from "@/lib/format";
 import { requestUserLocation, type UserLocation } from "@/lib/location";
+import { useStopLive } from "@/lib/live";
 import { usePalette } from "@/lib/theme";
-import type { Stop, StopArrivalsResponse } from "@/lib/types";
+import type { Stop } from "@/lib/types";
 
 export default function NearbyScreen() {
   const palette = usePalette();
   const router = useRouter();
   const [location, setLocation] = useState<UserLocation | null>(null);
   const [stops, setStops] = useState<Stop[]>([]);
-  const [arrivals, setArrivals] = useState<Record<string, StopArrivalsResponse>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [openCode, setOpenCode] = useState<string | null>(null);
+  const live = useStopLive(openCode);
+  const arrivals = live.data;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -37,13 +39,6 @@ export default function NearbyScreen() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  useEffect(() => {
-    if (!openCode) return;
-    fetchArrivals(openCode)
-      .then((data) => setArrivals((current) => ({ ...current, [openCode]: data })))
-      .catch(() => undefined);
-  }, [openCode]);
 
   return (
     <Screen>
@@ -88,7 +83,7 @@ export default function NearbyScreen() {
           {stops.map((stop) => {
             const walk = walkParts(stop.distance_m);
             const selected = openCode === stop.code;
-            const live = arrivals[stop.code];
+            const liveServices = selected ? arrivals?.services : undefined;
             return (
               <Card key={stop.code} onPress={() => setOpenCode(selected ? null : stop.code)}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
@@ -103,7 +98,7 @@ export default function NearbyScreen() {
                 </View>
                 {selected ? (
                   <View style={{ marginTop: 12, gap: 8 }}>
-                    {live?.services.slice(0, 4).map((service) => {
+                    {liveServices?.slice(0, 4).map((service) => {
                       const next = arrivalShort(service.arrivals[0]?.minutes);
                       return (
                         <Pressable
