@@ -81,25 +81,25 @@ export function MobileMapOverlay() {
     <div className="pointer-events-none absolute inset-0 z-[1200] md:hidden">
       <Link
         href="/search"
-        className="pointer-events-auto absolute left-3 right-[4.75rem] top-3 flex h-12 items-center gap-3 rounded-full border border-[var(--glass-line)] bg-[var(--glass)] px-4 text-sm text-[var(--muted)] shadow-[0_10px_30px_var(--shadow)] backdrop-blur-md"
+        className="bf-shadow-lg pointer-events-auto absolute left-3 right-[4.75rem] top-3 flex h-12 items-center gap-3 rounded-full border border-[var(--glass-line)] bg-[var(--glass)] px-4 text-sm text-[var(--muted)] backdrop-blur-md"
       >
         <Search size={16} strokeWidth={2} />
         Search stops and buses
       </Link>
-      <ThemeToggle className="pointer-events-auto absolute right-3 top-3 !h-12 !w-12 shadow-[0_10px_30px_var(--shadow)]" />
+      <ThemeToggle className="bf-shadow-lg pointer-events-auto absolute right-3 top-3 !h-12 !w-12" />
 
       <div className="pointer-events-auto absolute inset-x-0 bottom-0 flex flex-col items-end">
         <button
           type="button"
           onClick={reload}
-          className="mb-3 mr-3 flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--card)] text-[var(--ink)] shadow-[0_8px_24px_var(--shadow)]"
+          className="bf-shadow-md mb-3 mr-3 flex h-11 w-11 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--card)] text-[var(--ink)]"
           aria-label="Use current location"
         >
           <LocateFixed size={18} strokeWidth={2} />
         </button>
 
         <section
-          className="flex w-full flex-col overflow-hidden rounded-t-[1.6rem] border-t border-[var(--glass-line)] bg-[var(--glass)] shadow-[0_-12px_40px_var(--shadow)] backdrop-blur-xl transition-[height] duration-200 ease-out"
+          className="bf-shadow-sheet flex w-full flex-col overflow-hidden rounded-t-[1.6rem] border-t border-[var(--glass-line)] bg-[var(--glass)] backdrop-blur-xl transition-[height] duration-200 ease-out"
           style={{ height: sheetMax }}
         >
           <div
@@ -138,7 +138,7 @@ export function MobileMapOverlay() {
               <div className="shrink-0 px-4 pb-3 pt-2">
                 <Link
                   href={`/stops/${selectedStop.code}`}
-                  className="flex h-11 items-center justify-center rounded-full bg-[var(--accent)] text-sm font-medium text-[var(--on-accent)]"
+                  className="bf-on-accent flex h-11 items-center justify-center rounded-full bg-[var(--accent)] text-sm font-medium"
                 >
                   View stop
                 </Link>
@@ -206,7 +206,7 @@ function NearbySheet({
           <button
             type="button"
             onClick={onLocate}
-            className="h-8 rounded-full bg-[var(--accent)] px-3 text-xs font-medium text-[var(--on-accent)]"
+            className="bf-on-accent h-8 rounded-full bg-[var(--accent)] px-3 text-xs font-medium"
           >
             Enable
           </button>

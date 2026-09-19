@@ -14,7 +14,7 @@ export default function NearbyPage() {
           <button
             type="button"
             onClick={reload}
-            className="mt-3 h-11 rounded-full bg-[var(--accent)] px-4 text-sm text-[var(--on-accent)]"
+            className="bf-on-accent mt-3 h-11 rounded-full bg-[var(--accent)] px-4 text-sm"
           >
             Enable location
           </button>
