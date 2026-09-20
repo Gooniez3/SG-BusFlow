@@ -284,6 +284,11 @@ export default function SearchScreen() {
           <Text style={{ color: destination ? palette.onAccent : palette.muted, fontWeight: "600" }}>Find journey</Text>
         </Pressable>
       </View>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <View style={{ flex: 1, height: 1, backgroundColor: palette.line }} />
+        <Text style={{ color: palette.muted, fontSize: 11, letterSpacing: 1.6, fontWeight: "500" }}>OR</Text>
+        <View style={{ flex: 1, height: 1, backgroundColor: palette.line }} />
+      </View>
       <View
         style={{
           height: 48,

@@ -126,6 +126,11 @@ function SearchInner() {
     <section className="space-y-5">
       <h1 className="text-2xl font-semibold tracking-tight">Search</h1>
       <JourneyForm />
+      <div className="flex items-center gap-3" role="separator" aria-label="or">
+        <span className="h-px flex-1 bg-[var(--line)]" />
+        <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--muted)]">or</span>
+        <span className="h-px flex-1 bg-[var(--line)]" />
+      </div>
       <SearchBar
         value={query}
         placeholder="Search buses, stops or places"
