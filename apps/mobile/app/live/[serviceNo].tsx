@@ -95,8 +95,11 @@ export default function LiveScreen() {
         }
       />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 16 }}>
-        {arrivals ? <LiveBadge cachedAt={arrivals.cached_at} stale={arrivals.stale} /> : null}
+        {arrivals ? <LiveBadge cachedAt={arrivals.cached_at} stale={arrivals.stale} status={live.status} /> : <LiveBadge status={live.status} />}
         {error ? <Muted>{error}</Muted> : null}
+        {live.error ? (
+          <Muted>{arrivals ? "Live data delayed. Showing last arrivals." : live.error}</Muted>
+        ) : null}
         {service ? (
           <Card>
             <ServiceRow service={service} stopCode={stopCode} linked={false} />

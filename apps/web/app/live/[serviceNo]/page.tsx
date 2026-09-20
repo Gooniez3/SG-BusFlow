@@ -17,7 +17,7 @@ import { useWorkspace } from "@/lib/workspace";
 function LiveBusInner() {
   const params = useParams<{ serviceNo: string }>();
   const searchParams = useSearchParams();
-  const { setSelectedCode, location, preview, previewError } = useWorkspace();
+  const { setSelectedCode, location, preview, previewError, liveStatus } = useWorkspace();
   const serviceNo = params.serviceNo.toUpperCase();
   const stopCode = searchParams.get("stop");
   const [stop, setStop] = useState<Stop | null>(null);
@@ -58,10 +58,10 @@ function LiveBusInner() {
   if (!stopCode) {
     return <ErrorState title="Choose a stop first" detail="Open a stop, then track a bus from live arrivals." />;
   }
-  if (error || previewError) {
-    return <ErrorState title="Live bus unavailable" detail="We couldn't retrieve the latest arrival information." />;
+  if (error) {
+    return <ErrorState title="Live bus unavailable" detail={error} />;
   }
-  if (!stop || !liveData) {
+  if (!stop) {
     return <div className="h-24 animate-pulse rounded-xl bg-[var(--line)]" />;
   }
 
@@ -78,7 +78,13 @@ function LiveBusInner() {
         }
         extra={<ServiceFavoriteButton iconOnly serviceNo={serviceNo} operator={service?.operator} />}
       />
-      {liveData ? <LiveBadge cachedAt={liveData.cached_at} stale={liveData.stale} /> : null}
+      <LiveBadge cachedAt={liveData?.cached_at} stale={liveData?.stale} status={liveStatus} />
+      {previewError ? (
+        <ErrorState
+          title="Live arrivals delayed"
+          detail="LTA data is temporarily unavailable. Last known arrivals stay on screen when we have them."
+        />
+      ) : null}
       <div className="rounded-xl border border-[var(--line)] bg-[var(--card)] px-3 py-2">
         {service ? (
           <ServiceTimes service={service} stopCode={stopCode} linked={false} />

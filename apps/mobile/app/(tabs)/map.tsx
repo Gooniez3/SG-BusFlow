@@ -250,10 +250,21 @@ export default function MapScreen() {
                 >
                   Live arrivals
                 </Text>
-                {live.data ? <LiveBadge cachedAt={live.data.cached_at} stale={live.data.stale} /> : null}
+                {live.data ? (
+                  <LiveBadge cachedAt={live.data.cached_at} stale={live.data.stale} status={live.status} />
+                ) : (
+                  <LiveBadge status={live.status} />
+                )}
               </View>
             </View>
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+              {live.error ? (
+                <Muted>
+                  {live.data
+                    ? "Live data delayed. Showing last arrivals."
+                    : live.error}
+                </Muted>
+              ) : null}
               {live.data && live.data.services.length > 0 ? (
                 <View style={{ overflow: "hidden", borderRadius: 8, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.bg }}>
                   {live.data.services.map((service) => (
@@ -264,7 +275,7 @@ export default function MapScreen() {
               {live.data && live.data.services.length === 0 ? (
                 <Muted>No services reported right now.</Muted>
               ) : null}
-              {!live.data ? (
+              {!live.data && !live.error ? (
                 <View style={{ gap: 8, paddingVertical: 8 }}>
                   <View style={{ height: 40, borderRadius: 8, backgroundColor: palette.line }} />
                   <View style={{ height: 40, borderRadius: 8, backgroundColor: palette.line }} />

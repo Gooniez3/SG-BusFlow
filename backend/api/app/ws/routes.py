@@ -14,6 +14,7 @@ from services.cache.live import make_bus_id, parse_bus_id
 
 logger = logging.getLogger("sg-busflow.ws")
 router = APIRouter()
+IDLE_SECONDS = 90
 
 
 def _hub(websocket: WebSocket) -> ConnectionHub:
@@ -33,9 +34,24 @@ async def _snapshot(code: str) -> dict:
 
 async def _pump(websocket: WebSocket) -> None:
     while True:
-        message = await websocket.receive_text()
+        try:
+            message = await asyncio.wait_for(websocket.receive_text(), timeout=IDLE_SECONDS)
+        except TimeoutError:
+            await websocket.close(code=1001)
+            return
         if message == "ping":
             await websocket.send_text("pong")
+
+
+async def _send_snapshot_or_live_error(websocket: WebSocket, code: str) -> dict | None:
+    try:
+        return await _snapshot(code)
+    except LiveSnapshotError as exc:
+        await websocket.send_json({"type": "error", "detail": exc.detail})
+        if exc.status_code == 404:
+            await websocket.close(code=1008)
+            return None
+        return {}
 
 
 @router.websocket("/ws/v1/stops/{stop_id}")
@@ -47,15 +63,13 @@ async def stop_socket(websocket: WebSocket, stop_id: str) -> None:
     await hub.watch_stop(code)
     await hub.subscribe(channel, websocket)
     try:
-        try:
-            payload = await _snapshot(code)
-        except LiveSnapshotError as exc:
-            await websocket.send_json({"type": "error", "detail": exc.detail})
-            await websocket.close(code=1008)
+        payload = await _send_snapshot_or_live_error(websocket, code)
+        if payload is None:
             return
-        await websocket.send_json(
-            {"type": "snapshot", "channel": "stop", "id": code, "payload": payload}
-        )
+        if payload:
+            await websocket.send_json(
+                {"type": "snapshot", "channel": "stop", "id": code, "payload": payload}
+            )
         await _pump(websocket)
     except WebSocketDisconnect:
         pass
@@ -76,31 +90,33 @@ async def service_socket(websocket: WebSocket, service_number: str, stop: str | 
     await hub.subscribe(channel, websocket)
     try:
         if stop_code:
-            try:
-                payload = await _snapshot(stop_code)
-            except LiveSnapshotError as exc:
-                await websocket.send_json({"type": "error", "detail": exc.detail})
-                await websocket.close(code=1008)
+            payload = await _send_snapshot_or_live_error(websocket, stop_code)
+            if payload is None:
                 return
-            match = next(
-                (item for item in payload["services"] if item["service_no"].upper() == service_no),
-                None,
-            )
-            await websocket.send_json(
-                {
-                    "type": "snapshot",
-                    "channel": "service",
-                    "id": service_no,
-                    "payload": {
-                        "service_no": service_no,
-                        "stop_code": stop_code,
-                        "cached_at": payload["cached_at"],
-                        "stale": payload["stale"],
-                        "operator": match.get("operator") if match else None,
-                        "arrivals": match.get("arrivals") if match else [],
-                    },
-                }
-            )
+            if payload:
+                match = next(
+                    (
+                        item
+                        for item in payload["services"]
+                        if item["service_no"].upper() == service_no
+                    ),
+                    None,
+                )
+                await websocket.send_json(
+                    {
+                        "type": "snapshot",
+                        "channel": "service",
+                        "id": service_no,
+                        "payload": {
+                            "service_no": service_no,
+                            "stop_code": stop_code,
+                            "cached_at": payload["cached_at"],
+                            "stale": payload["stale"],
+                            "operator": match.get("operator") if match else None,
+                            "arrivals": match.get("arrivals") if match else [],
+                        },
+                    }
+                )
         await _pump(websocket)
     except WebSocketDisconnect:
         pass
@@ -125,35 +141,37 @@ async def bus_socket(websocket: WebSocket, bus_id: str) -> None:
     await hub.watch_stop(stop_code)
     await hub.subscribe(channel, websocket)
     try:
-        try:
-            payload = await _snapshot(stop_code)
-        except LiveSnapshotError as exc:
-            await websocket.send_json({"type": "error", "detail": exc.detail})
-            await websocket.close(code=1008)
+        payload = await _send_snapshot_or_live_error(websocket, stop_code)
+        if payload is None:
             return
-        match = next(
-            (item for item in payload["services"] if item["service_no"].upper() == service_no),
-            None,
-        )
-        arrivals = match.get("arrivals") if match else []
-        arrival = arrivals[index - 1] if index <= len(arrivals) else None
-        await websocket.send_json(
-            {
-                "type": "snapshot",
-                "channel": "bus",
-                "id": canonical,
-                "payload": None
-                if arrival is None
-                else {
-                    **arrival,
-                    "bus_id": canonical,
-                    "service_no": service_no,
-                    "stop_code": stop_code,
-                    "cached_at": payload["cached_at"],
-                    "stale": payload["stale"],
-                },
-            }
-        )
+        if payload:
+            match = next(
+                (
+                    item
+                    for item in payload["services"]
+                    if item["service_no"].upper() == service_no
+                ),
+                None,
+            )
+            arrivals = match.get("arrivals") if match else []
+            arrival = arrivals[index - 1] if index <= len(arrivals) else None
+            await websocket.send_json(
+                {
+                    "type": "snapshot",
+                    "channel": "bus",
+                    "id": canonical,
+                    "payload": None
+                    if arrival is None
+                    else {
+                        **arrival,
+                        "bus_id": canonical,
+                        "service_no": service_no,
+                        "stop_code": stop_code,
+                        "cached_at": payload["cached_at"],
+                        "stale": payload["stale"],
+                    },
+                }
+            )
         await _pump(websocket)
     except WebSocketDisconnect:
         pass

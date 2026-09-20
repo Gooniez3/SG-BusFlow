@@ -163,8 +163,17 @@ export default function StopScreen() {
         <Card padded>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
             <Text style={{ color: palette.muted, fontSize: 11, letterSpacing: 1.6, fontWeight: "500" }}>LIVE ARRIVALS</Text>
-            {arrivals ? <LiveBadge cachedAt={arrivals.cached_at} stale={arrivals.stale} /> : null}
+            {arrivals ? (
+              <LiveBadge cachedAt={arrivals.cached_at} stale={arrivals.stale} status={live.status} />
+            ) : (
+              <LiveBadge status={live.status} />
+            )}
           </View>
+          {live.error ? (
+            <Muted>
+              {arrivals ? "Live data delayed. Showing last arrivals." : live.error}
+            </Muted>
+          ) : null}
           {arrivals && arrivals.services.length > 0 ? (
             <View style={{ overflow: "hidden", borderRadius: 8, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.bg }}>
               {arrivals.services.map((service) => (

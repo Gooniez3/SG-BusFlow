@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
-import { BusFront, Clock, Footprints, MapPin, Search } from "lucide-react-native";
+import { BusFront, Clock, Footprints, MapPin, Navigation, Search, X } from "lucide-react-native";
 
 import { EmptyState, Muted, Mono, Screen, SectionLabel, Title } from "@/components/Ui";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { searchServices, searchStops } from "@/lib/api";
+import {
+  clearDestinations,
+  pushDestination,
+  readDestinations,
+  removeDestination,
+  type RecentDestination,
+} from "@/lib/destinations";
 import { walkParts } from "@/lib/format";
 import { requestUserLocation } from "@/lib/location";
 import { clearRecents, pushRecent, readRecents, type RecentSearch } from "@/lib/recents";
@@ -21,9 +28,14 @@ export default function SearchScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [recents, setRecents] = useState<RecentSearch[]>([]);
+  const [destinations, setDestinations] = useState<RecentDestination[]>([]);
+  const [toQuery, setToQuery] = useState("");
+  const [destination, setDestination] = useState<Stop | null>(null);
+  const [toMatches, setToMatches] = useState<Stop[]>([]);
 
   useEffect(() => {
     void readRecents().then(setRecents);
+    void readDestinations().then(setDestinations);
   }, []);
 
   useEffect(() => {
@@ -58,6 +70,28 @@ export default function SearchScreen() {
       clearTimeout(timer);
     };
   }, [query]);
+
+  useEffect(() => {
+    const trimmed = toQuery.trim();
+    if (!trimmed || destination?.name === trimmed) {
+      setToMatches([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const location = await requestUserLocation();
+        const result = await searchStops(trimmed, location.lat, location.lng);
+        if (!cancelled) setToMatches(result.stops.slice(0, 6));
+      } catch {
+        if (!cancelled) setToMatches([]);
+      }
+    }, 200);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [toQuery, destination?.name]);
 
   const nearbyStops = useMemo(
     () => stops.filter((stop) => stop.distance_m != null && stop.distance_m <= 1500),
@@ -108,6 +142,150 @@ export default function SearchScreen() {
       </View>
       <View
         style={{
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: palette.line,
+          backgroundColor: palette.card,
+          padding: 12,
+          gap: 12,
+        }}
+      >
+        <Text style={{ color: palette.ink, fontWeight: "500" }}>Plan a journey</Text>
+        <View>
+          <Text style={{ color: palette.muted, fontSize: 10, letterSpacing: 1.6, fontWeight: "500" }}>FROM</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 }}>
+            <Navigation size={16} color={palette.accent} strokeWidth={2} />
+            <Text style={{ color: palette.ink, fontWeight: "500" }}>Current location</Text>
+          </View>
+        </View>
+        <View>
+          <Text style={{ color: palette.muted, fontSize: 10, letterSpacing: 1.6, fontWeight: "500" }}>TO</Text>
+          <View
+            style={{
+              marginTop: 6,
+              height: 44,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: palette.line,
+              backgroundColor: palette.bg,
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 10,
+              gap: 8,
+            }}
+          >
+            <MapPin size={16} color={palette.muted} strokeWidth={2} />
+            <TextInput
+              value={toQuery}
+              onChangeText={(value) => {
+                setToQuery(value);
+                setDestination(null);
+              }}
+              placeholder="Where do you want to go?"
+              placeholderTextColor={palette.muted}
+              autoCorrect={false}
+              style={{ flex: 1, color: palette.ink, fontSize: 15, paddingVertical: 0 }}
+            />
+          </View>
+        </View>
+        {toMatches.map((stop) => (
+          <Pressable
+            key={stop.code}
+            onPress={() => {
+              setDestination(stop);
+              setToQuery(stop.name);
+              setToMatches([]);
+            }}
+            style={{ flexDirection: "row", gap: 8, paddingVertical: 4 }}
+          >
+            <MapPin size={14} color={palette.muted} strokeWidth={2} style={{ marginTop: 2 }} />
+            <View>
+              <Text style={{ color: palette.ink, fontWeight: "500" }}>{stop.name}</Text>
+              <Muted>
+                {stop.code}
+                {stop.road_name ? ` · ${stop.road_name}` : ""}
+              </Muted>
+            </View>
+          </Pressable>
+        ))}
+        {!toQuery && destinations.length > 0 ? (
+          <View>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <SectionLabel>Recent</SectionLabel>
+              <Pressable onPress={() => void clearDestinations().then(setDestinations)}>
+                <Text style={{ color: palette.muted, fontSize: 12 }}>Clear</Text>
+              </Pressable>
+            </View>
+            {destinations.map((item) => (
+              <View
+                key={`${item.label}-${item.stopCode ?? item.lat}`}
+                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+              >
+                <Pressable
+                  onPress={() => {
+                    setToQuery(item.label);
+                    if (item.stopCode) {
+                      setDestination({
+                        code: item.stopCode,
+                        name: item.label,
+                        road_name: null,
+                        latitude: item.lat,
+                        longitude: item.lng,
+                      });
+                    }
+                  }}
+                  style={{ flex: 1, paddingVertical: 8 }}
+                >
+                  <Text style={{ color: palette.ink, fontSize: 14 }}>{item.label}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => void removeDestination(item).then(setDestinations)}
+                  hitSlop={8}
+                  accessibilityLabel={`Remove ${item.label}`}
+                >
+                  <X size={14} color={palette.muted} strokeWidth={2} />
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        ) : null}
+        <Pressable
+          disabled={!destination}
+          onPress={async () => {
+            if (!destination) return;
+            const location = await requestUserLocation();
+            await pushDestination({
+              label: destination.name,
+              lat: destination.latitude,
+              lng: destination.longitude,
+              stopCode: destination.code,
+            });
+            router.push({
+              pathname: "/plan",
+              params: {
+                to: destination.code,
+                to_label: destination.name,
+                to_lat: String(destination.latitude),
+                to_lng: String(destination.longitude),
+                from_lat: String(location.lat),
+                from_lng: String(location.lng),
+                from_label: "Current location",
+              },
+            });
+          }}
+          style={{
+            height: 44,
+            borderRadius: 999,
+            backgroundColor: destination ? palette.accent : palette.line,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ color: destination ? palette.onAccent : palette.muted, fontWeight: "600" }}>Find journey</Text>
+        </Pressable>
+      </View>
+      <View
+        style={{
           height: 48,
           borderRadius: 12,
           borderWidth: 1,
@@ -124,7 +302,7 @@ export default function SearchScreen() {
           value={query}
           onChangeText={setQuery}
           onSubmitEditing={() => void go(query)}
-          placeholder="Stop, road, or bus number"
+          placeholder="Search buses, stops or places"
           placeholderTextColor={palette.muted}
           autoCorrect={false}
           autoCapitalize="none"

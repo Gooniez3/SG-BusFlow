@@ -1,5 +1,6 @@
 export {
   fetchArrivals,
+  fetchJourneys,
   fetchNearby,
   fetchService,
   fetchStop,

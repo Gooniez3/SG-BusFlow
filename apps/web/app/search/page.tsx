@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BusFront, Clock, Footprints, MapPin } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
+import { JourneyForm } from "@/components/JourneyForm";
 import { SearchBar } from "@/components/SearchBar";
 import { walkParts } from "@/lib/format";
 import { searchServices, searchStops } from "@/lib/transport";
@@ -124,10 +125,10 @@ function SearchInner() {
   return (
     <section className="space-y-5">
       <h1 className="text-2xl font-semibold tracking-tight">Search</h1>
+      <JourneyForm />
       <SearchBar
         value={query}
-        placeholder="Stop, road, or bus number"
-        autoFocus
+        placeholder="Search buses, stops or places"
         onChange={setQuery}
         onClear={() => {
           setQuery("");

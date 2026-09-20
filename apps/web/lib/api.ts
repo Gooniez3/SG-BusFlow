@@ -1,4 +1,5 @@
 import type {
+  JourneyPlanResponse,
   NearbyResponse,
   ServiceDetailResponse,
   ServiceSearchItem,
@@ -51,4 +52,26 @@ export function fetchArrivals(code: string) {
 
 export function fetchService(serviceNo: string) {
   return getJson<ServiceDetailResponse>(`/api/v1/services/${serviceNo}`);
+}
+
+export function fetchJourneys(params: {
+  fromLat: number;
+  fromLng: number;
+  toLat: number;
+  toLng: number;
+  fromStop?: string;
+  toStop?: string;
+  fromLabel?: string;
+  toLabel?: string;
+}) {
+  return getJson<JourneyPlanResponse>("/api/v1/journey", {
+    from_lat: params.fromLat,
+    from_lng: params.fromLng,
+    to_lat: params.toLat,
+    to_lng: params.toLng,
+    from_stop: params.fromStop,
+    to_stop: params.toStop,
+    from_label: params.fromLabel,
+    to_label: params.toLabel,
+  });
 }

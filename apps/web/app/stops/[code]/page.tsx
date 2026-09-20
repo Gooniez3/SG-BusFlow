@@ -19,7 +19,7 @@ import { useWorkspace } from "@/lib/workspace";
 function StopPageInner() {
   const params = useParams<{ code: string }>();
   const searchParams = useSearchParams();
-  const { location, setSelectedCode, stops, preview, previewError } = useWorkspace();
+  const { location, setSelectedCode, stops, preview, previewError, liveStatus } = useWorkspace();
   const code = params.code;
   const lat = searchParams.get("lat") ?? (location ? String(location.lat) : null);
   const lng = searchParams.get("lng") ?? (location ? String(location.lng) : null);
@@ -123,7 +123,11 @@ function StopPageInner() {
           <h2 className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--muted)]">
             Live arrivals
           </h2>
-          {arrivals ? <LiveBadge cachedAt={arrivals.cached_at} stale={arrivals.stale} /> : null}
+          {arrivals ? (
+            <LiveBadge cachedAt={arrivals.cached_at} stale={arrivals.stale} status={liveStatus} />
+          ) : (
+            <LiveBadge status={liveStatus} />
+          )}
         </div>
         {arrivalError ? (
           <ErrorState

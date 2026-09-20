@@ -39,7 +39,6 @@ const LEAFLET_HTML = `<!DOCTYPE html>
       maxZoom: 19
     }).addTo(map);
     map.setView([1.3521, 103.8198], 16);
-    const layer = L.layerGroup().addTo(map);
     function send(payload) {
       if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(payload));
     }
@@ -72,24 +71,61 @@ const LEAFLET_HTML = `<!DOCTYPE html>
         iconAnchor: [22, 22]
       });
     }
+    const stopLayer = L.layerGroup().addTo(map);
+    const busLayer = L.layerGroup().addTo(map);
+    let routeLine = null;
+    let userMarker = null;
+    const busMarkers = {};
+    let lastStopsKey = "";
     window.__bfUpdate = function(state) {
-      layer.clearLayers();
-      map.invalidateSize();
       if (state.showUser && state.user) {
-        L.marker([state.user.lat, state.user.lng], { icon: userIcon(), zIndexOffset: 500 }).addTo(layer);
+        const latlng = [state.user.lat, state.user.lng];
+        if (userMarker) userMarker.setLatLng(latlng);
+        else userMarker = L.marker(latlng, { icon: userIcon(), zIndexOffset: 500 }).addTo(map);
+      } else if (userMarker) {
+        map.removeLayer(userMarker);
+        userMarker = null;
       }
-      (state.stops || []).forEach(function(stop) {
-        const selected = stop.code === state.selectedCode;
-        L.marker([stop.lat, stop.lng], { icon: stopIcon(stop.name, selected), zIndexOffset: selected ? 400 : 120 })
-          .on("click", function() { send({ type: "stop", code: stop.code }); })
-          .addTo(layer);
-      });
+      const stopsKey = (state.stops || []).map(function(stop) {
+        return stop.code + (stop.code === state.selectedCode ? "*" : "");
+      }).join(",");
+      if (stopsKey !== lastStopsKey) {
+        stopLayer.clearLayers();
+        (state.stops || []).forEach(function(stop) {
+          const selected = stop.code === state.selectedCode;
+          L.marker([stop.lat, stop.lng], { icon: stopIcon(stop.name, selected), zIndexOffset: selected ? 400 : 120 })
+            .on("click", function() { send({ type: "stop", code: stop.code }); })
+            .addTo(stopLayer);
+        });
+        lastStopsKey = stopsKey;
+      }
+      const seen = {};
       (state.buses || []).forEach(function(bus) {
-        L.marker([bus.lat, bus.lng], { icon: busIcon(bus.serviceNo), zIndexOffset: 800 })
-          .on("click", function() { send({ type: "bus", serviceNo: bus.serviceNo }); })
-          .addTo(layer);
+        const id = bus.serviceNo;
+        seen[id] = true;
+        if (busMarkers[id]) {
+          busMarkers[id].setLatLng([bus.lat, bus.lng]);
+        } else {
+          busMarkers[id] = L.marker([bus.lat, bus.lng], { icon: busIcon(bus.serviceNo), zIndexOffset: 800 })
+            .on("click", function() { send({ type: "bus", serviceNo: bus.serviceNo }); })
+            .addTo(busLayer);
+        }
       });
+      Object.keys(busMarkers).forEach(function(id) {
+        if (!seen[id]) {
+          busLayer.removeLayer(busMarkers[id]);
+          delete busMarkers[id];
+        }
+      });
+      if (routeLine) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
+      if (state.path && state.path.length >= 2) {
+        routeLine = L.polyline(state.path, { color: "#0f9d8a", weight: 4, opacity: 0.85 }).addTo(map);
+      }
       if (state.recenter) {
+        map.invalidateSize();
         if (state.fit && state.fit.length >= 1) {
           const bounds = L.latLngBounds(state.fit);
           const size = map.getSize();
@@ -130,6 +166,7 @@ export function LeafletMap({
   onSelectBus,
   style,
   fitBus = false,
+  path,
 }: {
   lat: number;
   lng: number;
@@ -145,13 +182,16 @@ export function LeafletMap({
   onSelectBus?: (serviceNo: string) => void;
   style?: object;
   fitBus?: boolean;
+  path?: [number, number][];
 }) {
   const webRef = useRef<WebView>(null);
   const lastRecenter = useRef<string | null>(null);
   const payload = useMemo(() => {
     const selected = stops.find((stop) => stop.code === selectedCode);
     const fit =
-      fitBus && selected && buses.length > 0
+      path && path.length >= 2
+        ? path
+        : fitBus && selected && buses.length > 0
         ? [
             [selected.latitude, selected.longitude] as [number, number],
             ...busesForMapFit(selected, buses).map((bus) => [bus.lat, bus.lng] as [number, number]),
@@ -173,8 +213,9 @@ export function LeafletMap({
       })),
       buses,
       fit,
+      path: path ?? null,
     };
-  }, [buses, bottomPad, fitBus, lat, lng, selectedCode, showUser, stops, user, zoom]);
+  }, [buses, bottomPad, fitBus, lat, lng, path, selectedCode, showUser, stops, user, zoom]);
   const payloadRef = useRef(payload);
   payloadRef.current = payload;
 

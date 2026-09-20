@@ -5,6 +5,13 @@ def arrivals_key(bus_stop_code: str) -> str:
     return f"{PREFIX}:arrivals:{bus_stop_code}"
 
 
+def arrivals_last_key(bus_stop_code: str) -> str:
+    return f"{PREFIX}:arrivals:{bus_stop_code}:last"
+
+
+ARRIVALS_STALE_TTL_SECONDS = 15 * 60
+
+
 STOPS_KEY = f"{PREFIX}:stops"
 SERVICES_KEY = f"{PREFIX}:services"
 WATCHED_STOPS_KEY = f"{PREFIX}:ws:watched-stops"

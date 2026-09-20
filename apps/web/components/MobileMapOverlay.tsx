@@ -23,6 +23,7 @@ export function MobileMapOverlay() {
     preview,
     previewLoading,
     previewError,
+    liveStatus,
     reload,
   } = useWorkspace();
   const [open, setOpen] = useState(false);
@@ -126,7 +127,11 @@ export function MobileMapOverlay() {
                   <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--muted)]">
                     Live arrivals
                   </p>
-                  {preview ? <LiveBadge cachedAt={preview.cached_at} stale={preview.stale} /> : null}
+                  {preview ? (
+                    <LiveBadge cachedAt={preview.cached_at} stale={preview.stale} status={liveStatus} />
+                  ) : selectedCode ? (
+                    <LiveBadge status={liveStatus} />
+                  ) : null}
                 </div>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4">

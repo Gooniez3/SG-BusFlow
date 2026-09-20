@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AppState, type AppStateStatus } from "react-native";
+
 import { apiUrl } from "./api";
 import type { StopArrivalsResponse } from "./types";
+
+export type LiveStatus = "idle" | "connecting" | "live" | "reconnecting" | "offline";
 
 type LiveMessage<T> = {
   type: string;
@@ -14,49 +18,104 @@ export function wsUrl(path: string) {
   return `${root.replace(/^https?/, protocol)}${path}`;
 }
 
-function connectLive<T>(path: string, onMessage: (payload: T | null, error?: string) => void) {
+function connectLive<T>(
+  path: string,
+  onMessage: (payload: T | null, error?: string) => void,
+  onStatus?: (status: LiveStatus) => void,
+) {
   let closed = false;
+  let backgrounded = AppState.currentState !== "active";
   let socket: WebSocket | null = null;
   let retry: ReturnType<typeof setTimeout> | undefined;
   let ping: ReturnType<typeof setInterval> | undefined;
   let delay = 1000;
+  let everLive = false;
+
+  function setStatus(status: LiveStatus) {
+    onStatus?.(status);
+  }
+
+  function stopPing() {
+    if (ping) clearInterval(ping);
+    ping = undefined;
+  }
 
   function open() {
+    if (closed) return;
+    if (backgrounded) {
+      setStatus(everLive ? "reconnecting" : "connecting");
+      return;
+    }
+    setStatus(everLive ? "reconnecting" : "connecting");
     socket = new WebSocket(wsUrl(path));
     socket.onmessage = (event) => {
       if (event.data === "pong") return;
       try {
         const message = JSON.parse(String(event.data)) as LiveMessage<T>;
         if (message.type === "error") {
-          onMessage(null, message.detail ?? "Live connection error");
+          onMessage(null, message.detail ?? "Live arrivals are temporarily unavailable");
           return;
         }
-        onMessage(message.payload ?? null);
+        if (message.payload) onMessage(message.payload);
       } catch {
         /* ignore keepalives */
       }
     };
     socket.onopen = () => {
       delay = 1000;
+      everLive = true;
+      setStatus("live");
       ping = setInterval(() => {
         if (socket?.readyState === WebSocket.OPEN) socket.send("ping");
       }, 20000);
     };
     socket.onclose = () => {
-      if (ping) clearInterval(ping);
-      ping = undefined;
-      if (!closed) {
-        retry = setTimeout(open, delay);
-        delay = Math.min(delay * 2, 15000);
+      stopPing();
+      if (closed) {
+        setStatus("offline");
+        return;
       }
+      if (backgrounded) {
+        setStatus("reconnecting");
+        return;
+      }
+      setStatus(everLive ? "reconnecting" : "connecting");
+      retry = setTimeout(open, delay);
+      delay = Math.min(delay * 2, 15000);
     };
   }
 
+  function reconnectNow() {
+    if (closed || backgrounded) return;
+    delay = 1000;
+    if (retry) clearTimeout(retry);
+    retry = undefined;
+    if (socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) {
+      return;
+    }
+    open();
+  }
+
+  function onAppState(state: AppStateStatus) {
+    backgrounded = state !== "active";
+    if (backgrounded) {
+      if (retry) clearTimeout(retry);
+      retry = undefined;
+      socket?.close();
+      setStatus(everLive ? "reconnecting" : "connecting");
+      return;
+    }
+    reconnectNow();
+  }
+
   open();
+  const sub = AppState.addEventListener("change", onAppState);
+
   return () => {
     closed = true;
     if (retry) clearTimeout(retry);
-    if (ping) clearInterval(ping);
+    stopPing();
+    sub.remove();
     socket?.close();
   };
 }
@@ -99,26 +158,44 @@ export function useLiveStops(codes: string[]) {
 export function useStopLive(code: string | null) {
   const [data, setData] = useState<StopArrivalsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<LiveStatus>("idle");
+  const generation = useRef(0);
 
   useEffect(() => {
     if (!code) {
       setData(null);
       setError(null);
+      setStatus("idle");
       return;
     }
-    return connectLive<StopArrivalsResponse>(`/ws/v1/stops/${code}`, (payload, liveError) => {
-      if (liveError) {
-        setError(liveError);
-        return;
-      }
-      if (payload) {
-        setData(payload);
-        setError(null);
-      }
-    });
+    const ticket = ++generation.current;
+    setData(null);
+    setError(null);
+    setStatus("connecting");
+    return connectLive<StopArrivalsResponse>(
+      `/ws/v1/stops/${code}`,
+      (payload, liveError) => {
+        if (ticket !== generation.current) return;
+        if (liveError) {
+          setError(liveError);
+          return;
+        }
+        if (payload) {
+          setData(payload);
+          setError(null);
+        }
+      },
+      (next) => {
+        if (ticket !== generation.current) return;
+        setStatus(next);
+      },
+    );
   }, [code]);
 
-  return useMemo(() => ({ data, error }), [data, error]);
+  return useMemo(
+    () => ({ data, error, status, connected: status === "live" }),
+    [data, error, status],
+  );
 }
 
 export type ServiceLive = {
@@ -133,12 +210,15 @@ export type ServiceLive = {
 export function useServiceLive(serviceNo: string | null, stopCode: string | null) {
   const [data, setData] = useState<ServiceLive | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<LiveStatus>("idle");
 
   useEffect(() => {
     if (!serviceNo || !stopCode) {
       setData(null);
+      setStatus("idle");
       return;
     }
+    setStatus("connecting");
     return connectLive<ServiceLive>(
       `/ws/v1/services/${serviceNo}?stop=${encodeURIComponent(stopCode)}`,
       (payload, liveError) => {
@@ -146,11 +226,14 @@ export function useServiceLive(serviceNo: string | null, stopCode: string | null
           setError(liveError);
           return;
         }
-        setData(payload);
-        setError(null);
+        if (payload) {
+          setData(payload);
+          setError(null);
+        }
       },
+      setStatus,
     );
   }, [serviceNo, stopCode]);
 
-  return useMemo(() => ({ data, error }), [data, error]);
+  return useMemo(() => ({ data, error, status }), [data, error, status]);
 }

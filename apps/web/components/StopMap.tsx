@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import L from "leaflet";
 import { Minus, Plus } from "lucide-react";
-import { MapContainer, Marker, TileLayer, useMap } from "react-leaflet";
+import { MapContainer, Marker, Polyline, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { busesForMapFit } from "@/lib/buses";
 import type { Stop } from "@/lib/types";
@@ -65,14 +65,15 @@ function Recenter({
   lng,
   bottomPad = 0,
   fit,
+  cameraKey,
 }: {
   lat: number;
   lng: number;
   bottomPad?: number;
   fit?: [number, number][];
+  cameraKey: string;
 }) {
   const map = useMap();
-  const fitKey = fit?.map((point) => `${point[0].toFixed(5)},${point[1].toFixed(5)}`).join("|") ?? "";
   useEffect(() => {
     map.invalidateSize({ animate: false });
     if (fit && fit.length >= 1) {
@@ -92,7 +93,8 @@ function Recenter({
     const point = map.project([lat, lng], zoom);
     point.y += bottomPad / 2;
     map.setView(map.unproject(point, zoom), zoom, { animate: true });
-  }, [lat, lng, bottomPad, fit, fitKey, map]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cameraKey is the identity; live GPS must not refit.
+  }, [cameraKey, map]);
   return null;
 }
 
@@ -155,6 +157,7 @@ export function StopMap({
   fitToBus = false,
   onSelectStop,
   onSelectBus,
+  path,
 }: {
   lat: number;
   lng: number;
@@ -170,6 +173,7 @@ export function StopMap({
   fitToBus?: boolean;
   onSelectStop?: (code: string) => void;
   onSelectBus?: (serviceNo: string) => void;
+  path?: [number, number][];
 }) {
   const focus = stops.find((stop) => stop.code === selectedCode);
   const userPosition =
@@ -177,12 +181,19 @@ export function StopMap({
   const cameraLat = focus?.latitude ?? userPosition?.[0] ?? lat;
   const cameraLng = focus?.longitude ?? userPosition?.[1] ?? lng;
   const fit =
-    fitToBus && focus && buses.length > 0
+    path && path.length >= 2
+      ? path
+      : fitToBus && focus && buses.length > 0
       ? ([
           [focus.latitude, focus.longitude] as [number, number],
           ...busesForMapFit(focus, buses).map((bus) => [bus.lat, bus.lng] as [number, number]),
         ])
       : undefined;
+  const cameraKey = path && path.length >= 2
+    ? `path:${path[0]?.join(",")}:${path[path.length - 1]?.join(",")}:${path.length}`
+    : selectedCode
+    ? `${selectedCode}:${fitToBus ? "fit" : "center"}:${buses.map((bus) => bus.serviceNo).join(",")}`
+    : `user:${cameraLat.toFixed(4)}:${cameraLng.toFixed(4)}:${bottomPad}`;
   return (
     <MapContainer
       center={[cameraLat, cameraLng]}
@@ -192,13 +203,16 @@ export function StopMap({
       zoomControl={false}
       scrollWheelZoom
     >
-      <Recenter lat={cameraLat} lng={cameraLng} bottomPad={bottomPad} fit={fit} />
+      <Recenter lat={cameraLat} lng={cameraLng} bottomPad={bottomPad} fit={fit} cameraKey={cameraKey} />
       <InvalidateSize />
       <ZoomControls />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      {path && path.length >= 2 ? (
+        <Polyline positions={path} pathOptions={{ color: "#0f9d8a", weight: 4, opacity: 0.85 }} />
+      ) : null}
       {showUser && userPosition ? <Marker position={userPosition} icon={userIcon()} zIndexOffset={500} /> : null}
       {showStops
         ? stops.map((stop) => (
@@ -216,7 +230,7 @@ export function StopMap({
       {showBuses
         ? buses.map((bus, index) => (
             <Marker
-              key={`${bus.serviceNo}-${index}`}
+              key={`${bus.serviceNo}:${bus.lat.toFixed(5)}:${bus.lng.toFixed(5)}:${index}`}
               position={[bus.lat, bus.lng]}
               icon={busIcon(bus.serviceNo)}
               zIndexOffset={800}

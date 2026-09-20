@@ -12,9 +12,11 @@ logger = logging.getLogger("workers")
 
 def ingest_static(client, store, settings) -> None:
     from app.core.db import SessionLocal
+    from app.journey.graph import clear_graph_cache
+    from app.repositories.network import upsert_bus_network
     from app.repositories.stops import upsert_bus_stops
     from services.lta.bus_stops import list_bus_stops
-    from services.lta.routes import list_bus_services
+    from services.lta.routes import list_bus_routes, list_bus_services
     from services.cache.keys import SERVICES_KEY, STOPS_KEY
 
     stops = list_bus_stops(client)
@@ -29,14 +31,19 @@ def ingest_static(client, store, settings) -> None:
         [service.model_dump(mode="json") for service in services],
         settings.static_cache_ttl_seconds,
     )
+    routes = list_bus_routes(client)
     with SessionLocal() as db:
         db_count = upsert_bus_stops(db, stops)
+        network = upsert_bus_network(db, services, routes)
         db.commit()
+    clear_graph_cache()
     logger.info(
-        "cached %s bus stops and %s services; upserted %s stops into PostGIS",
+        "cached %s bus stops and %s services; upserted %s stops, %s routes, %s route stops into PostGIS",
         len(stops),
         len(services),
         db_count,
+        network["routes"],
+        network["route_stops"],
     )
 
 

@@ -5,6 +5,8 @@ import type { StopArrivalsResponse } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
+export type LiveStatus = "idle" | "connecting" | "live" | "reconnecting" | "offline";
+
 type LiveMessage<T> = {
   type: string;
   channel?: string;
@@ -19,49 +21,116 @@ export function wsUrl(path: string) {
   return `${root.replace(/^https?/, protocol)}${path}`;
 }
 
-function connectLive<T>(path: string, onMessage: (payload: T | null, error?: string) => void) {
+function connectLive<T>(
+  path: string,
+  onMessage: (payload: T | null, error?: string) => void,
+  onStatus?: (status: LiveStatus) => void,
+) {
   let closed = false;
+  let hidden = typeof document !== "undefined" && document.visibilityState === "hidden";
   let socket: WebSocket | null = null;
   let retry: number | undefined;
   let ping: number | undefined;
   let delay = 1000;
+  let everLive = false;
+
+  function setStatus(status: LiveStatus) {
+    onStatus?.(status);
+  }
+
+  function stopPing() {
+    if (ping) window.clearInterval(ping);
+    ping = undefined;
+  }
 
   function open() {
+    if (closed) return;
+    if (hidden) {
+      setStatus(everLive ? "reconnecting" : "connecting");
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setStatus("offline");
+      retry = window.setTimeout(open, delay);
+      delay = Math.min(delay * 2, 15000);
+      return;
+    }
+    setStatus(everLive ? "reconnecting" : "connecting");
     socket = new WebSocket(wsUrl(path));
     socket.onmessage = (event) => {
       if (event.data === "pong") return;
       try {
         const message = JSON.parse(String(event.data)) as LiveMessage<T>;
         if (message.type === "error") {
-          onMessage(null, message.detail ?? "Live connection error");
+          onMessage(null, message.detail ?? "Live arrivals are temporarily unavailable");
           return;
         }
-        onMessage(message.payload ?? null);
+        if (message.payload) onMessage(message.payload);
       } catch {
         /* ignore keepalives */
       }
     };
     socket.onopen = () => {
       delay = 1000;
+      everLive = true;
+      setStatus("live");
       ping = window.setInterval(() => {
         if (socket?.readyState === WebSocket.OPEN) socket.send("ping");
       }, 20000);
     };
     socket.onclose = () => {
-      if (ping) window.clearInterval(ping);
-      ping = undefined;
-      if (!closed) {
-        retry = window.setTimeout(open, delay);
-        delay = Math.min(delay * 2, 15000);
+      stopPing();
+      if (closed) {
+        setStatus("offline");
+        return;
       }
+      if (hidden) {
+        setStatus("reconnecting");
+        return;
+      }
+      setStatus(everLive ? "reconnecting" : "connecting");
+      retry = window.setTimeout(open, delay);
+      delay = Math.min(delay * 2, 15000);
     };
   }
 
+  function reconnectNow() {
+    if (closed || hidden) return;
+    delay = 1000;
+    if (retry) window.clearTimeout(retry);
+    retry = undefined;
+    if (socket?.readyState === WebSocket.OPEN || socket?.readyState === WebSocket.CONNECTING) {
+      return;
+    }
+    open();
+  }
+
+  function onVisible() {
+    hidden = document.visibilityState === "hidden";
+    if (hidden) {
+      if (retry) window.clearTimeout(retry);
+      retry = undefined;
+      socket?.close();
+      setStatus(everLive ? "reconnecting" : "connecting");
+      return;
+    }
+    reconnectNow();
+  }
+
+  function onOnline() {
+    reconnectNow();
+  }
+
   open();
+  document.addEventListener("visibilitychange", onVisible);
+  window.addEventListener("online", onOnline);
+
   return () => {
     closed = true;
     if (retry) window.clearTimeout(retry);
-    if (ping) window.clearInterval(ping);
+    stopPing();
+    document.removeEventListener("visibilitychange", onVisible);
+    window.removeEventListener("online", onOnline);
     socket?.close();
   };
 }
@@ -69,39 +138,44 @@ function connectLive<T>(path: string, onMessage: (payload: T | null, error?: str
 export function useStopLive(code: string | null) {
   const [data, setData] = useState<StopArrivalsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [connected, setConnected] = useState(false);
+  const [status, setStatus] = useState<LiveStatus>("idle");
   const generation = useRef(0);
 
   useEffect(() => {
     if (!code) {
       setData(null);
       setError(null);
-      setConnected(false);
+      setStatus("idle");
       return;
     }
     const ticket = ++generation.current;
-    setConnected(true);
+    setData(null);
     setError(null);
-    return connectLive<StopArrivalsResponse>(`/ws/v1/stops/${code}`, (payload, liveError) => {
-      if (ticket !== generation.current) return;
-      if (liveError) {
-        setError(liveError);
-        return;
-      }
-      if (payload) {
-        setData(payload);
-        setError(null);
-      }
-    });
+    setStatus("connecting");
+    return connectLive<StopArrivalsResponse>(
+      `/ws/v1/stops/${code}`,
+      (payload, liveError) => {
+        if (ticket !== generation.current) return;
+        if (liveError) {
+          setError(liveError);
+          return;
+        }
+        if (payload) {
+          setData(payload);
+          setError(null);
+        }
+      },
+      (next) => {
+        if (ticket !== generation.current) return;
+        setStatus(next);
+      },
+    );
   }, [code]);
 
-  useEffect(() => {
-    return () => {
-      setConnected(false);
-    };
-  }, [code]);
-
-  return useMemo(() => ({ data, error, connected }), [data, error, connected]);
+  return useMemo(
+    () => ({ data, error, status, connected: status === "live" }),
+    [data, error, status],
+  );
 }
 
 export function useLiveStops(codes: string[]) {
@@ -133,7 +207,10 @@ export function useLiveStops(codes: string[]) {
     };
   }, [key]);
 
-  return useMemo(() => ({ data, error, loading: key.length > 0 && Object.keys(data).length === 0 }), [data, error, key]);
+  return useMemo(
+    () => ({ data, error, loading: key.length > 0 && Object.keys(data).length === 0 }),
+    [data, error, key],
+  );
 }
 
 export type ServiceLive = {
@@ -148,22 +225,31 @@ export type ServiceLive = {
 export function useServiceLive(serviceNo: string | null, stopCode: string | null) {
   const [data, setData] = useState<ServiceLive | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<LiveStatus>("idle");
 
   useEffect(() => {
     if (!serviceNo) {
       setData(null);
+      setStatus("idle");
       return;
     }
     const query = stopCode ? `?stop=${encodeURIComponent(stopCode)}` : "";
-    return connectLive<ServiceLive>(`/ws/v1/services/${serviceNo}${query}`, (payload, liveError) => {
-      if (liveError) {
-        setError(liveError);
-        return;
-      }
-      setData(payload);
-      setError(null);
-    });
+    setStatus("connecting");
+    return connectLive<ServiceLive>(
+      `/ws/v1/services/${serviceNo}${query}`,
+      (payload, liveError) => {
+        if (liveError) {
+          setError(liveError);
+          return;
+        }
+        if (payload) {
+          setData(payload);
+          setError(null);
+        }
+      },
+      setStatus,
+    );
   }, [serviceNo, stopCode]);
 
-  return useMemo(() => ({ data, error }), [data, error]);
+  return useMemo(() => ({ data, error, status }), [data, error, status]);
 }

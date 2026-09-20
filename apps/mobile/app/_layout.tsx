@@ -22,6 +22,8 @@ function RootStack() {
         <Stack.Screen name="stop/[code]" options={{ headerShown: false }} />
         <Stack.Screen name="live/[serviceNo]" options={{ headerShown: false }} />
         <Stack.Screen name="service/[serviceNo]" options={{ headerShown: false }} />
+        <Stack.Screen name="plan" options={{ headerShown: false }} />
+        <Stack.Screen name="plan-detail" options={{ headerShown: false }} />
       </Stack>
     </ThemeProvider>
   );

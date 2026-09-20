@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { fetchNearby } from "./api";
-import { useStopLive } from "./live";
+import { useStopLive, type LiveStatus } from "./live";
 import { requestUserLocation, type UserLocation } from "./location";
 import type { Stop, StopArrivalsResponse } from "./types";
 
@@ -17,6 +17,7 @@ type WorkspaceValue = {
   preview: StopArrivalsResponse | null;
   previewLoading: boolean;
   previewError: string | null;
+  liveStatus: LiveStatus;
   reload: () => void;
 };
 
@@ -65,6 +66,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const preview = live.data;
   const previewError = live.error;
   const previewLoading = Boolean(selectedCode) && !live.data && !live.error;
+  const liveStatus = live.status;
 
   const value = useMemo(
     () => ({
@@ -78,6 +80,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       preview,
       previewLoading,
       previewError,
+      liveStatus,
       reload,
     }),
     [
@@ -90,6 +93,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       preview,
       previewLoading,
       previewError,
+      liveStatus,
       reload,
     ],
   );

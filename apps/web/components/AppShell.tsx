@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { WorkspaceMap } from "@/components/WorkspaceMap";
 import { ThemeProvider } from "@/lib/theme";
 import { WorkspaceProvider } from "@/lib/workspace";
+import { JourneyProvider } from "@/lib/journey-session";
 
 const DESKTOP_LINKS = [
   { href: "/search", label: "Search", icon: Search },
@@ -25,6 +26,9 @@ const MOBILE_LINKS = [
 function navActive(pathname: string, href: string) {
   if (href === "/" || href === "/nearby") {
     return pathname === "/" || pathname === "/nearby";
+  }
+  if (href === "/search") {
+    return pathname === "/search" || pathname.startsWith("/search/") || pathname.startsWith("/journey");
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -130,7 +134,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
       <WorkspaceProvider>
-        <ShellChrome>{children}</ShellChrome>
+        <JourneyProvider>
+          <ShellChrome>{children}</ShellChrome>
+        </JourneyProvider>
       </WorkspaceProvider>
     </ThemeProvider>
   );

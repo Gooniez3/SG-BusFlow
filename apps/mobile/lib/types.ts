@@ -60,3 +60,40 @@ export type ServiceDetailResponse = {
     loop_desc: string | null;
   }[];
 };
+
+export type JourneyLeg = {
+  kind: string;
+  duration_min: number;
+  distance_m?: number | null;
+  from_label?: string | null;
+  to_label?: string | null;
+  to_stop?: Stop | null;
+  service_no?: string | null;
+  wait_min?: number | null;
+  live_minutes?: number | null;
+  stop_count?: number | null;
+  from_stop?: Stop | null;
+  via_stops?: Stop[] | null;
+};
+
+export type JourneyOption = {
+  id: string;
+  duration_min: number;
+  walk_min: number;
+  wait_min: number;
+  transfers: number;
+  live: boolean;
+  stale: boolean;
+  legs: JourneyLeg[];
+};
+
+export type JourneyPlanResponse = {
+  from_label: string;
+  to_label: string;
+  from_lat: number;
+  from_lng: number;
+  to_lat: number;
+  to_lng: number;
+  network_ready: boolean;
+  options: JourneyOption[];
+};

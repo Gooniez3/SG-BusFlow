@@ -7,6 +7,8 @@ import { DynamicStopMap } from "@/components/DynamicStopMap";
 import { MobileMapOverlay } from "@/components/MobileMapOverlay";
 import { busesFromServices, uniqueBuses } from "@/lib/buses";
 import { fetchStop } from "@/lib/api";
+import { journeyPoints } from "@/lib/journey";
+import { useJourneySession } from "@/lib/journey-session";
 import { useWorkspace } from "@/lib/workspace";
 import type { Stop } from "@/lib/types";
 
@@ -30,11 +32,28 @@ export function WorkspaceMap() {
     preview,
     reload,
   } = useWorkspace();
+  const { pickMode, setOrigin, setDestination, selectedOption, plan, setPickMode } = useJourneySession();
   const selectedStop = stops.find((stop) => stop.code === selectedCode) ?? extraStop;
+  const journeyStops = useMemo(() => {
+    if (!selectedOption || !plan) return [];
+    const collected: Stop[] = [];
+    for (const leg of selectedOption.legs) {
+      if (leg.from_stop) collected.push(leg.from_stop);
+      for (const stop of leg.via_stops ?? []) collected.push(stop);
+      if (leg.to_stop) collected.push(leg.to_stop);
+    }
+    return collected.filter((stop, index, list) => list.findIndex((item) => item.code === stop.code) === index);
+  }, [plan, selectedOption]);
+  const showJourney = pathname.startsWith("/journey") && selectedOption && plan;
   const mapStops = useMemo(() => {
+    if (showJourney && journeyStops.length > 0) return journeyStops;
     if (focused && selectedStop) return [selectedStop];
     return stops;
-  }, [focused, selectedStop, stops]);
+  }, [focused, journeyStops, selectedStop, showJourney, stops]);
+  const path = useMemo(() => {
+    if (!showJourney || !selectedOption || !plan) return undefined;
+    return journeyPoints(selectedOption, { lat: plan.from_lat, lng: plan.from_lng }, { lat: plan.to_lat, lng: plan.to_lng });
+  }, [plan, selectedOption, showJourney]);
   const buses = useMemo(() => {
     if (!selectedCode || !preview || preview.bus_stop_code !== selectedCode) return [];
     const list = uniqueBuses(busesFromServices(preview.services));
@@ -85,12 +104,30 @@ export function WorkspaceMap() {
         userLat={location.lat}
         userLng={location.lng}
         stops={mapStops}
-        buses={buses}
+        buses={showJourney ? [] : buses}
         selectedCode={selectedCode}
-        showUser={!focused}
-        fitToBus={Boolean(trackedService || (selectedCode && buses.length > 0))}
+        showUser={!focused || pathname.startsWith("/journey") || pathname === "/search"}
+        fitToBus={Boolean(!path && (trackedService || (selectedCode && buses.length > 0)))}
+        path={path}
         bottomPad={mapPage && mobile ? 250 : 0}
-        onSelectStop={setSelectedCode}
+        onSelectStop={(code) => {
+          if (pickMode) {
+            const known = stops.find((item) => item.code === code) ?? extraStop;
+            const assign = (stop: Stop) => {
+              const place = { label: stop.name, lat: stop.latitude, lng: stop.longitude, stopCode: stop.code };
+              if (pickMode === "from") setOrigin(place);
+              else setDestination(place);
+              setPickMode(null);
+            };
+            if (known) {
+              assign(known);
+              return;
+            }
+            void fetchStop(code).then(assign).catch(() => undefined);
+            return;
+          }
+          setSelectedCode(code);
+        }}
         onSelectBus={(serviceNo) => {
           const stop = selectedCode ?? stops[0]?.code;
           if (stop) {

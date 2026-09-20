@@ -5,7 +5,7 @@ import pytest
 from fakeredis import FakeRedis
 
 from services.cache.arrivals import cache_stop_arrivals, get_cached_arrivals
-from services.cache.keys import STOPS_KEY, arrivals_key
+from services.cache.keys import STOPS_KEY, arrivals_key, arrivals_last_key
 from services.cache.models import CachedStopArrivals
 from services.cache.static import cache_bus_stops
 from services.cache.store import CacheStore
@@ -85,6 +85,7 @@ def test_cache_stop_arrivals_writes_redis() -> None:
 
     raw = redis.get(arrivals_key("22009"))
     assert raw is not None
+    assert redis.get(arrivals_last_key("22009")) is not None
     assert cached.services[0].arrivals[0].minutes == 3
     loaded = CachedStopArrivals.model_validate_json(raw)
     assert loaded.bus_stop_code == "22009"
@@ -134,6 +135,27 @@ def test_lta_failure_keeps_stale_cache() -> None:
     assert CachedStopArrivals.model_validate_json(
         redis.get(arrivals_key("22009"))
     ).stale is False
+
+
+def test_lta_failure_after_ttl_uses_last_copy() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503)
+
+    redis = FakeRedis(decode_responses=True)
+    store = CacheStore(redis)
+    existing = CachedStopArrivals(
+        bus_stop_code="22009",
+        cached_at=datetime(2026, 9, 17, 4, 1, tzinfo=timezone.utc),
+        stale=False,
+        services=[],
+    )
+    store.set_json(arrivals_last_key("22009"), existing, 900)
+
+    with _lta(httpx.MockTransport(handler)) as client:
+        cached = get_cached_arrivals(client, store, "22009", ttl_seconds=30)
+
+    assert cached.stale is True
+    assert cached.bus_stop_code == "22009"
 
 
 def test_lta_failure_without_cache_raises() -> None:
