@@ -8,6 +8,7 @@ import type {
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const REQUEST_MS = 30_000;
 
 async function getJson<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
   const url = new URL(path, API_URL);
@@ -18,14 +19,25 @@ async function getJson<T>(path: string, params?: Record<string, string | number 
       }
     }
   }
-  const response = await fetch(url);
-  if (!response.ok) {
-    const detail = await response.json().catch(() => null);
-    const message =
-      typeof detail?.detail === "string" ? detail.detail : `Request failed (${response.status})`;
-    throw new Error(message);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_MS);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => null);
+      const message =
+        typeof detail?.detail === "string" ? detail.detail : `Request failed (${response.status})`;
+      throw new Error(message);
+    }
+    return response.json() as Promise<T>;
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Request timed out. Try again.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
-  return response.json() as Promise<T>;
 }
 
 export function fetchNearby(lat: number, lng: number, radius = 1000) {

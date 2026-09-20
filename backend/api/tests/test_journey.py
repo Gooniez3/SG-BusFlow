@@ -133,3 +133,15 @@ def test_bus_leg_lists_each_stop_on_the_ride() -> None:
     bus = next(leg for leg in options[0]["legs"] if leg["kind"] == "bus")
     assert bus["service_no"] == "36"
     assert [stop["name"] for stop in bus["via_stops"]] == ["Mid", "Airport"]
+
+
+def test_same_point_does_not_return_zero_minute_walk() -> None:
+    graph, origin, dest, _transfer = _graph()
+    options = plan_journeys(
+        graph=graph,
+        origin=(origin.lat, origin.lng),
+        dest=(origin.lat, origin.lng),
+        origin_stops=[(origin, 0)],
+        dest_stops=[(origin, 0)],
+    )
+    assert options == []

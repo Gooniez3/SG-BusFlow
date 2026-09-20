@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { JourneyDetails, JourneyResults } from "@/components/JourneyResults";
 import { PageHeader } from "@/components/PageHeader";
 import { fetchJourneys } from "@/lib/transport";
-import { journeyDetailHref, parseJourneySearch } from "@/lib/journey";
+import { journeyDetailHref, parseJourneySearch, samePlace } from "@/lib/journey";
 import { useJourneySession } from "@/lib/journey-session";
 import type { JourneyPlanResponse } from "@/lib/types";
 
@@ -28,34 +28,43 @@ function JourneyInner() {
       return;
     }
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    fetchJourneys({
-      fromLat: query.fromLat,
-      fromLng: query.fromLng,
-      toLat: query.toLat,
-      toLng: query.toLng,
-      fromStop: query.fromStop,
-      toStop: query.toStop,
-      fromLabel: query.fromLabel,
-      toLabel: query.toLabel,
-    })
-      .then((result) => {
-        if (cancelled) return;
-        setLocalPlan(result);
-        setPlan(result);
-        const optionId = typeof window === "undefined" ? query.optionId : new URLSearchParams(window.location.search).get("option");
-        const match = result.options.find((item) => item.id === optionId) ?? result.options[0] ?? null;
-        setSelectedOption(match);
+    const load = (silent: boolean) => {
+      if (!silent) {
+        setLoading(true);
+        setError(null);
+      }
+      fetchJourneys({
+        fromLat: query.fromLat,
+        fromLng: query.fromLng,
+        toLat: query.toLat,
+        toLng: query.toLng,
+        fromStop: query.fromStop,
+        toStop: query.toStop,
+        fromLabel: query.fromLabel,
+        toLabel: query.toLabel,
       })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Could not plan this journey");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+        .then((result) => {
+          if (cancelled) return;
+          setLocalPlan(result);
+          setPlan(result);
+          const optionId =
+            typeof window === "undefined" ? query.optionId : new URLSearchParams(window.location.search).get("option");
+          const match = result.options.find((item) => item.id === optionId) ?? result.options[0] ?? null;
+          setSelectedOption(match);
+          setError(null);
+        })
+        .catch((err: unknown) => {
+          if (!cancelled && !silent) setError(err instanceof Error ? err.message : "Could not plan this journey");
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    };
+    load(false);
+    const timer = window.setInterval(() => load(true), 20_000);
     return () => {
       cancelled = true;
+      window.clearInterval(timer);
     };
   }, [query?.fromLat, query?.fromLng, query?.toLat, query?.toLng, query?.fromStop, query?.toStop, query?.fromLabel, query?.toLabel, router, setPlan, setSelectedOption]);
 
@@ -90,7 +99,11 @@ function JourneyInner() {
         />
       ) : null}
       {plan?.network_ready && plan.options.length === 0 ? (
-        <EmptyState title="No bus journey found" detail="Try a closer destination, or a stop served by more services." />
+        samePlace({ lat: query.fromLat, lng: query.fromLng }, { lat: query.toLat, lng: query.toLng }) ? (
+          <EmptyState title="You're already here" detail="Pick a different destination to plan a bus journey." />
+        ) : (
+          <EmptyState title="No bus journey found" detail="Try a closer destination, or a stop served by more services." />
+        )
       ) : null}
       {plan?.options.length ? (
         <JourneyResults

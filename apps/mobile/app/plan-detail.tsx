@@ -37,27 +37,32 @@ export default function PlanDetailScreen() {
   useEffect(() => {
     if (![fromLat, fromLng, toLat, toLng].every((value) => Number.isFinite(value))) return;
     let cancelled = false;
-    fetchJourneys({
-      fromLat,
-      fromLng,
-      toLat,
-      toLng,
-      fromStop: params.from_stop,
-      toStop: params.to,
-      fromLabel: params.from_label || "Current location",
-      toLabel: params.to_label || "Destination",
-    })
-      .then((result) => {
-        if (cancelled) return;
-        setPlan(result);
-        setOption(result.options.find((item) => item.id === params.option) ?? result.options[0] ?? null);
-        setError(null);
+    const load = (silent: boolean) => {
+      fetchJourneys({
+        fromLat,
+        fromLng,
+        toLat,
+        toLng,
+        fromStop: params.from_stop,
+        toStop: params.to,
+        fromLabel: params.from_label || "Current location",
+        toLabel: params.to_label || "Destination",
       })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Could not load this trip");
-      });
+        .then((result) => {
+          if (cancelled) return;
+          setPlan(result);
+          setOption(result.options.find((item) => item.id === params.option) ?? result.options[0] ?? null);
+          setError(null);
+        })
+        .catch((err: unknown) => {
+          if (!cancelled && !silent) setError(err instanceof Error ? err.message : "Could not load this trip");
+        });
+    };
+    load(false);
+    const timer = setInterval(() => load(true), 20_000);
     return () => {
       cancelled = true;
+      clearInterval(timer);
     };
   }, [fromLat, fromLng, toLat, toLng, params.from_stop, params.to, params.from_label, params.to_label, params.option]);
 

@@ -329,7 +329,7 @@ def plan_journeys(
             options.append(option)
 
     direct_m = haversine_m(origin[0], origin[1], dest[0], dest[1])
-    if direct_m <= MAX_WALK_ONLY_M:
+    if 0 < direct_m <= MAX_WALK_ONLY_M:
         duration = walk_minutes(direct_m)
         walk_id = f"walk:{round(direct_m)}"
         if walk_id not in seen:

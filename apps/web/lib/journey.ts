@@ -17,6 +17,16 @@ export type JourneyQuery = {
   optionId?: string;
 };
 
+export function samePlace(
+  left: { lat: number; lng: number },
+  right: { lat: number; lng: number },
+  metres = 40,
+) {
+  const dLat = (left.lat - right.lat) * 111_000;
+  const dLng = (left.lng - right.lng) * 111_000 * Math.cos((left.lat * Math.PI) / 180);
+  return Math.hypot(dLat, dLng) <= metres;
+}
+
 export function transferLabel(count: number) {
   if (count === 0) return "Direct";
   if (count === 1) return "1 transfer";

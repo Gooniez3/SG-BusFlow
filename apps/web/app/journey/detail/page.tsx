@@ -31,32 +31,37 @@ function DetailInner() {
       setLoading(false);
     }
     let cancelled = false;
-    fetchJourneys({
-      fromLat: query.fromLat,
-      fromLng: query.fromLng,
-      toLat: query.toLat,
-      toLng: query.toLng,
-      fromStop: query.fromStop,
-      toStop: query.toStop,
-      fromLabel: query.fromLabel,
-      toLabel: query.toLabel,
-    })
-      .then((result) => {
-        if (cancelled) return;
-        setLocalPlan(result);
-        setPlan(result);
-        const match = result.options.find((item) => item.id === query.optionId) ?? result.options[0] ?? null;
-        setSelectedOption(match);
-        setError(null);
+    const load = (silent: boolean) => {
+      fetchJourneys({
+        fromLat: query.fromLat,
+        fromLng: query.fromLng,
+        toLat: query.toLat,
+        toLng: query.toLng,
+        fromStop: query.fromStop,
+        toStop: query.toStop,
+        fromLabel: query.fromLabel,
+        toLabel: query.toLabel,
       })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Could not load this trip");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+        .then((result) => {
+          if (cancelled) return;
+          setLocalPlan(result);
+          setPlan(result);
+          const match = result.options.find((item) => item.id === query.optionId) ?? result.options[0] ?? null;
+          setSelectedOption(match);
+          setError(null);
+        })
+        .catch((err: unknown) => {
+          if (!cancelled && !silent) setError(err instanceof Error ? err.message : "Could not load this trip");
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    };
+    load(false);
+    const timer = window.setInterval(() => load(true), 20_000);
     return () => {
       cancelled = true;
+      window.clearInterval(timer);
     };
   }, [query?.fromLat, query?.fromLng, query?.toLat, query?.toLng, query?.fromStop, query?.toStop, query?.optionId, router, setPlan, setSelectedOption]);
 

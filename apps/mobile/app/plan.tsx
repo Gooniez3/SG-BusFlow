@@ -7,7 +7,7 @@ import { LeafletMap } from "@/components/LeafletMap";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState, Muted } from "@/components/Ui";
 import { fetchJourneys } from "@/lib/api";
-import { journeyPoints, journeySummary, nextBusMinutes, transferLabel } from "@/lib/journey";
+import { journeyPoints, journeySummary, nextBusMinutes, samePlace, transferLabel } from "@/lib/journey";
 import { usePalette } from "@/lib/theme";
 import type { JourneyOption, JourneyPlanResponse, Stop } from "@/lib/types";
 
@@ -37,31 +37,36 @@ export default function PlanScreen() {
   useEffect(() => {
     if (![fromLat, fromLng, toLat, toLng].every((value) => Number.isFinite(value))) return;
     let cancelled = false;
-    setLoading(true);
-    fetchJourneys({
-      fromLat,
-      fromLng,
-      toLat,
-      toLng,
-      fromStop: params.from_stop,
-      toStop: params.to,
-      fromLabel: params.from_label || "Current location",
-      toLabel: params.to_label || "Destination",
-    })
-      .then((result) => {
-        if (cancelled) return;
-        setPlan(result);
-        setSelected(result.options[0] ?? null);
-        setError(null);
+    const load = (silent: boolean) => {
+      if (!silent) setLoading(true);
+      fetchJourneys({
+        fromLat,
+        fromLng,
+        toLat,
+        toLng,
+        fromStop: params.from_stop,
+        toStop: params.to,
+        fromLabel: params.from_label || "Current location",
+        toLabel: params.to_label || "Destination",
       })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Could not plan this journey");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+        .then((result) => {
+          if (cancelled) return;
+          setPlan(result);
+          setSelected((current) => result.options.find((item) => item.id === current?.id) ?? result.options[0] ?? null);
+          setError(null);
+        })
+        .catch((err: unknown) => {
+          if (!cancelled && !silent) setError(err instanceof Error ? err.message : "Could not plan this journey");
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    };
+    load(false);
+    const timer = setInterval(() => load(true), 20_000);
     return () => {
       cancelled = true;
+      clearInterval(timer);
     };
   }, [fromLat, fromLng, toLat, toLng, params.from_stop, params.to, params.from_label, params.to_label]);
 
@@ -74,6 +79,7 @@ export default function PlanScreen() {
     const collected: Stop[] = [];
     for (const leg of selected.legs) {
       if (leg.from_stop) collected.push(leg.from_stop);
+      for (const stop of leg.via_stops ?? []) collected.push(stop);
       if (leg.to_stop) collected.push(leg.to_stop);
     }
     return collected.filter((stop, index, list) => list.findIndex((item) => item.code === stop.code) === index);
@@ -118,7 +124,11 @@ export default function PlanScreen() {
           />
         ) : null}
         {plan?.network_ready && plan.options.length === 0 ? (
-          <EmptyState title="No bus journey found" detail="Try a closer destination, or a stop served by more services." />
+          samePlace({ lat: fromLat, lng: fromLng }, { lat: toLat, lng: toLng }) ? (
+            <EmptyState title="You're already here" detail="Pick a different destination to plan a bus journey." />
+          ) : (
+            <EmptyState title="No bus journey found" detail="Try a closer destination, or a stop served by more services." />
+          )
         ) : null}
         {plan?.options.map((option) => {
           const next = nextBusMinutes(option);

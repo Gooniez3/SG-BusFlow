@@ -34,14 +34,25 @@ async function getJson<T>(path: string, params?: Record<string, string | number 
       if (value !== undefined) url.searchParams.set(key, String(value));
     }
   }
-  const response = await fetch(url);
-  if (!response.ok) {
-    const detail = await response.json().catch(() => null);
-    const message =
-      typeof detail?.detail === "string" ? detail.detail : `Request failed (${response.status})`;
-    throw new Error(message);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => null);
+      const message =
+        typeof detail?.detail === "string" ? detail.detail : `Request failed (${response.status})`;
+      throw new Error(message);
+    }
+    return response.json() as Promise<T>;
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Request timed out. Try again.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
-  return response.json() as Promise<T>;
 }
 
 export function fetchNearby(lat: number, lng: number, radius = 1000) {
