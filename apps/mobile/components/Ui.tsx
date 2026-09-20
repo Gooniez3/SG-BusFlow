@@ -162,9 +162,6 @@ export function ServiceRow({
   const router = useRouter();
   const destination = service.arrivals[0]?.destination_name ?? service.operator;
   const slots: (Arrival | null)[] = [service.arrivals[0] ?? null, service.arrivals[1] ?? null, service.arrivals[2] ?? null];
-  const live =
-    Boolean(stopCode) &&
-    service.arrivals.some((arrival) => arrival.latitude && arrival.longitude && Math.abs(arrival.latitude) > 0.1);
 
   const body = (
     <View
@@ -248,11 +245,7 @@ export function ServiceRow({
   return (
     <Pressable
       onPress={() => {
-        if (live) {
-          router.push({ pathname: "/live/[serviceNo]", params: { serviceNo: service.service_no, stop: stopCode } });
-        } else {
-          router.push({ pathname: "/service/[serviceNo]", params: { serviceNo: service.service_no } });
-        }
+        router.push({ pathname: "/live/[serviceNo]", params: { serviceNo: service.service_no, stop: stopCode } });
       }}
     >
       {body}
