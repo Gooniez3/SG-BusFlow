@@ -9,6 +9,7 @@ from services.lta.routes import list_bus_routes, list_bus_services
 
 def _client_for(handler: httpx.MockTransport | None = None, **kwargs: object) -> LTAClient:
     http_client = httpx.Client(transport=handler) if handler is not None else None
+    kwargs.setdefault("retries", 0)
     return LTAClient("test-key", client=http_client, **kwargs)
 
 
@@ -185,3 +186,20 @@ def test_get_bus_arrivals_parses_next_bus() -> None:
     assert arrival.services[0].next_bus.latitude == pytest.approx(1.3404)
     assert arrival.services[0].next_bus_2 is not None
     assert arrival.services[0].next_bus_2.estimated_arrival is None
+
+
+def test_retries_transient_lta_errors_then_succeeds() -> None:
+    calls = {"count": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["count"] += 1
+        if calls["count"] < 3:
+            return httpx.Response(503)
+        return httpx.Response(200, json={"value": []})
+
+    with _client_for(httpx.MockTransport(handler), retries=2, retry_backoff_seconds=0) as client:
+        payload = client.get("BusStops")
+
+    assert calls["count"] == 3
+    assert payload == {"value": []}
+

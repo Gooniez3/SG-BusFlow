@@ -55,4 +55,5 @@ class StopArrivalsResponse(BaseModel):
     bus_stop_code: str
     cached_at: str
     stale: bool = False
+    age_seconds: int | None = None
     services: list[ServiceArrivals]

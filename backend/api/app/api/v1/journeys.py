@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from redis import Redis
 from sqlalchemy.orm import Session
 
+from app.core.codes import PREFER_PATTERN, STOP_CODE_PATTERN
 from app.core.db import get_db
 from app.core.redis import get_redis
 from app.journey.service import JourneyPlanError, compose_journey
@@ -19,11 +20,11 @@ def plan_journey(
     from_lng: float = Query(..., ge=-180, le=180),
     to_lat: float = Query(..., ge=-90, le=90),
     to_lng: float = Query(..., ge=-180, le=180),
-    from_stop: str | None = Query(default=None),
-    to_stop: str | None = Query(default=None),
-    from_label: str = Query(default="Current location"),
-    to_label: str = Query(default="Destination"),
-    prefer: str = Query(default="fastest"),
+    from_stop: str | None = Query(default=None, pattern=STOP_CODE_PATTERN),
+    to_stop: str | None = Query(default=None, pattern=STOP_CODE_PATTERN),
+    from_label: str = Query(default="Current location", max_length=80),
+    to_label: str = Query(default="Destination", max_length=80),
+    prefer: str = Query(default="fastest", pattern=PREFER_PATTERN),
     db: Session = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ) -> JourneyPlanResponse:

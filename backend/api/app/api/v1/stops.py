@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from redis import Redis
 from sqlalchemy.orm import Session
 
+from app.core.codes import STOP_CODE_PATTERN
 from app.core.db import get_db
 from app.core.redis import get_redis
 from app.live.snapshot import LiveSnapshotError, load_stop_snapshot
@@ -79,7 +80,7 @@ def search_bus_stops(
 
 @router.get("/{code}", response_model=StopDetail)
 def get_stop(
-    code: str,
+    code: str = Path(..., pattern=STOP_CODE_PATTERN),
     lat: float | None = Query(default=None, ge=-90, le=90),
     lng: float | None = Query(default=None, ge=-180, le=180),
     db: Session = Depends(get_db),
@@ -95,7 +96,7 @@ def get_stop(
 
 @router.get("/{code}/arrivals", response_model=StopArrivalsResponse)
 def get_stop_arrivals(
-    code: str,
+    code: str = Path(..., pattern=STOP_CODE_PATTERN),
     db: Session = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ) -> StopArrivalsResponse:

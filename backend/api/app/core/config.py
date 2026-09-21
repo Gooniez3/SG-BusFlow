@@ -32,6 +32,22 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
     openai_model: str = "gemini-3.6-flash"
+    rate_limit_per_minute: int = 120
+    rate_limit_assistant_per_minute: int = 20
+    rate_limit_journey_per_minute: int = 40
+    ws_max_connections: int = 200
+    ws_max_connections_per_ip: int = 8
+    ws_idle_seconds: int = 90
+    lta_retry_attempts: int = 2
+    lta_retry_backoff_seconds: float = 0.25
+    stale_after_seconds: int = 90
+    redis_socket_timeout_seconds: float = 2.0
+    db_pool_size: int = 5
+    db_max_overflow: int = 10
+    db_pool_recycle_seconds: int = 1800
+    trust_x_forwarded_for: bool = False
+    log_json: bool = False
+    expose_docs: bool = True
 
     def llm_provider(self) -> str:
         if self.groq_api_key.strip():

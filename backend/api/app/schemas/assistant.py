@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 
 class AssistantMessage(BaseModel):
     role: Literal["user", "assistant"]
-    content: str
+    content: str = Field(min_length=1, max_length=2000)
 
 
 class AssistantJourneyContext(BaseModel):
@@ -33,7 +33,7 @@ class AssistantContext(BaseModel):
 
 
 class AssistantChatRequest(BaseModel):
-    messages: list[AssistantMessage] = Field(min_length=1)
+    messages: list[AssistantMessage] = Field(min_length=1, max_length=20)
     context: AssistantContext | None = None
 
 

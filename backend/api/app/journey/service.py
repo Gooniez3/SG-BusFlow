@@ -36,9 +36,17 @@ def _stop_info(stop, distance_m: int | None = None) -> tuple[StopInfo, int]:
 
 def live_for_stops(redis: Redis, codes: list[str]) -> dict[str, dict]:
     store = CacheStore(redis)
+    unique = [code for code in dict.fromkeys(codes) if code]
+    if not unique:
+        return {}
+    keys: list[str] = []
+    for code in unique:
+        keys.append(arrivals_key(code))
+        keys.append(arrivals_last_key(code))
+    values = store.get_texts(keys)
     live: dict[str, dict] = {}
-    for code in dict.fromkeys(codes):
-        raw = store.get_text(arrivals_key(code)) or store.get_text(arrivals_last_key(code))
+    for index, code in enumerate(unique):
+        raw = values[index * 2] or values[index * 2 + 1]
         if raw is None:
             continue
         cached = CachedStopArrivals.model_validate_json(raw)

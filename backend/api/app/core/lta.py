@@ -10,6 +10,8 @@ def create_lta_client() -> LTAClient:
         account_key=settings.lta_account_key,
         base_url=settings.lta_base_url,
         timeout=settings.lta_timeout_seconds,
+        retries=settings.lta_retry_attempts,
+        retry_backoff_seconds=settings.lta_retry_backoff_seconds,
     )
 
 

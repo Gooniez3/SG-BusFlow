@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel
 from redis import Redis
+from redis.exceptions import RedisError
 
+from app.core.codes import SERVICE_NO_PATTERN
 from app.core.redis import get_redis
 from services.cache.keys import SERVICES_KEY
 
@@ -40,7 +42,10 @@ class ServiceSearchResponse(BaseModel):
 
 
 def _load_services(redis: Redis) -> list[dict]:
-    raw = redis.get(SERVICES_KEY)
+    try:
+        raw = redis.get(SERVICES_KEY)
+    except RedisError as exc:
+        raise HTTPException(status_code=503, detail="Live cache is unavailable") from exc
     if raw is None:
         raise HTTPException(status_code=404, detail="Service data is not cached yet")
     payload = json.loads(raw)
@@ -73,7 +78,10 @@ def search_services(
 
 
 @router.get("/{service_no}", response_model=ServiceDetailResponse)
-def get_service(service_no: str, redis: Redis = Depends(get_redis)) -> ServiceDetailResponse:
+def get_service(
+    service_no: str = Path(..., pattern=SERVICE_NO_PATTERN),
+    redis: Redis = Depends(get_redis),
+) -> ServiceDetailResponse:
     matches = [
         item
         for item in _load_services(redis)

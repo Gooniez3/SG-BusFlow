@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from redis import Redis
+from redis.exceptions import RedisError
+
+logger = logging.getLogger("sg-busflow.redis")
 
 
 class CacheStore:
@@ -21,10 +25,35 @@ class CacheStore:
             payload = json.dumps(value)
         else:
             payload = value
-        self._redis.set(key, payload, ex=ttl_seconds)
+        try:
+            self._redis.set(key, payload, ex=ttl_seconds)
+        except RedisError:
+            logger.warning("redis set failed for %s", key)
 
     def get_text(self, key: str) -> str | None:
-        value = self._redis.get(key)
+        try:
+            value = self._redis.get(key)
+        except RedisError:
+            logger.warning("redis get failed for %s", key)
+            return None
         if value is None:
             return None
         return value if isinstance(value, str) else value.decode()
+
+    def get_texts(self, keys: list[str]) -> list[str | None]:
+        if not keys:
+            return []
+        try:
+            values = self._redis.mget(keys)
+        except RedisError:
+            logger.warning("redis mget failed for %s keys", len(keys))
+            return [None] * len(keys)
+        out: list[str | None] = []
+        for value in values or []:
+            if value is None:
+                out.append(None)
+            elif isinstance(value, str):
+                out.append(value)
+            else:
+                out.append(value.decode())
+        return out

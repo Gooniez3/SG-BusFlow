@@ -3,18 +3,19 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Path, Query, WebSocket, WebSocketDisconnect
 
+from app.core.codes import SERVICE_NO_PATTERN, STOP_CODE_PATTERN
+from app.core.config import get_settings
 from app.core.db import SessionLocal
 from app.core.redis import get_redis
 from app.live.snapshot import LiveSnapshotError, load_stop_snapshot
-from app.ws.hub import ConnectionHub
+from app.ws.hub import ConnectionHub, HubLimitError
 from services.cache.keys import bus_channel, service_channel, stop_channel
 from services.cache.live import make_bus_id, parse_bus_id
 
 logger = logging.getLogger("sg-busflow.ws")
 router = APIRouter()
-IDLE_SECONDS = 90
 
 
 def _hub(websocket: WebSocket) -> ConnectionHub:
@@ -33,14 +34,26 @@ async def _snapshot(code: str) -> dict:
 
 
 async def _pump(websocket: WebSocket) -> None:
+    idle = get_settings().ws_idle_seconds
     while True:
         try:
-            message = await asyncio.wait_for(websocket.receive_text(), timeout=IDLE_SECONDS)
+            message = await asyncio.wait_for(websocket.receive_text(), timeout=idle)
         except TimeoutError:
             await websocket.close(code=1001)
             return
         if message == "ping":
             await websocket.send_text("pong")
+
+
+async def _bind(websocket: WebSocket) -> bool:
+    await websocket.accept()
+    try:
+        await _hub(websocket).admit(websocket)
+        return True
+    except HubLimitError as exc:
+        await websocket.send_json({"type": "error", "detail": exc.detail})
+        await websocket.close(code=1013)
+        return False
 
 
 async def _send_snapshot_or_live_error(websocket: WebSocket, code: str) -> dict | None:
@@ -55,9 +68,13 @@ async def _send_snapshot_or_live_error(websocket: WebSocket, code: str) -> dict 
 
 
 @router.websocket("/ws/v1/stops/{stop_id}")
-async def stop_socket(websocket: WebSocket, stop_id: str) -> None:
+async def stop_socket(
+    websocket: WebSocket,
+    stop_id: str = Path(..., pattern=STOP_CODE_PATTERN),
+) -> None:
     code = stop_id.strip()
-    await websocket.accept()
+    if not await _bind(websocket):
+        return
     hub = _hub(websocket)
     channel = stop_channel(code)
     await hub.watch_stop(code)
@@ -76,13 +93,19 @@ async def stop_socket(websocket: WebSocket, stop_id: str) -> None:
     finally:
         await hub.unsubscribe(channel, websocket)
         await hub.unwatch_stop(code)
+        await hub.release(websocket)
 
 
 @router.websocket("/ws/v1/services/{service_number}")
-async def service_socket(websocket: WebSocket, service_number: str, stop: str | None = None) -> None:
+async def service_socket(
+    websocket: WebSocket,
+    service_number: str = Path(..., pattern=SERVICE_NO_PATTERN),
+    stop: str | None = Query(default=None, pattern=STOP_CODE_PATTERN),
+) -> None:
     service_no = service_number.strip().upper()
     stop_code = stop.strip() if stop else None
-    await websocket.accept()
+    if not await _bind(websocket):
+        return
     hub = _hub(websocket)
     channel = service_channel(service_no)
     if stop_code:
@@ -112,6 +135,7 @@ async def service_socket(websocket: WebSocket, service_number: str, stop: str | 
                             "stop_code": stop_code,
                             "cached_at": payload["cached_at"],
                             "stale": payload["stale"],
+                            "age_seconds": payload.get("age_seconds"),
                             "operator": match.get("operator") if match else None,
                             "arrivals": match.get("arrivals") if match else [],
                         },
@@ -124,16 +148,19 @@ async def service_socket(websocket: WebSocket, service_number: str, stop: str | 
         await hub.unsubscribe(channel, websocket)
         if stop_code:
             await hub.unwatch_stop(stop_code)
+        await hub.release(websocket)
 
 
 @router.websocket("/ws/v1/buses/{bus_id}")
 async def bus_socket(websocket: WebSocket, bus_id: str) -> None:
-    await websocket.accept()
+    if not await _bind(websocket):
+        return
     try:
         service_no, stop_code, index = parse_bus_id(bus_id)
     except ValueError:
         await websocket.send_json({"type": "error", "detail": "Invalid bus id"})
         await websocket.close(code=1008)
+        await _hub(websocket).release(websocket)
         return
     canonical = make_bus_id(service_no, stop_code, index)
     hub = _hub(websocket)
@@ -169,6 +196,7 @@ async def bus_socket(websocket: WebSocket, bus_id: str) -> None:
                         "stop_code": stop_code,
                         "cached_at": payload["cached_at"],
                         "stale": payload["stale"],
+                        "age_seconds": payload.get("age_seconds"),
                     },
                 }
             )
@@ -178,3 +206,4 @@ async def bus_socket(websocket: WebSocket, bus_id: str) -> None:
     finally:
         await hub.unsubscribe(channel, websocket)
         await hub.unwatch_stop(stop_code)
+        await hub.release(websocket)

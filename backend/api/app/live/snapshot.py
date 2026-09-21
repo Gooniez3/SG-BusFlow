@@ -4,8 +4,10 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.lta import create_lta_client
+from app.core.metrics import metrics
 from app.repositories.stops import get_stop_by_code, get_stops_by_codes
 from services.cache.arrivals import get_cached_arrivals
+from services.cache.freshness import arrival_age_seconds
 from services.cache.live import attach_bus_ids
 from services.cache.models import CachedStopArrivals
 from services.cache.store import CacheStore
@@ -21,6 +23,7 @@ class LiveSnapshotError(Exception):
 
 def arrivals_payload(db: Session, cached: CachedStopArrivals) -> dict:
     payload = attach_bus_ids(cached.model_dump(mode="json"))
+    payload["age_seconds"] = arrival_age_seconds(cached.cached_at)
     destination_codes = [
         arrival.get("destination_code")
         for service in payload["services"]
@@ -52,8 +55,10 @@ def load_stop_snapshot(db: Session, redis, code: str) -> dict:
             store,
             code,
             ttl_seconds=settings.arrival_cache_ttl_seconds,
+            stale_after_seconds=settings.stale_after_seconds,
         )
     except LTARequestError as exc:
+        metrics.bump("lta_errors")
         raise LiveSnapshotError(503, "Live arrivals are unavailable. Data may be delayed.") from exc
     finally:
         client.close()

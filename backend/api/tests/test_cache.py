@@ -16,7 +16,7 @@ from services.lta.models import LTABusArrival
 
 
 def _lta(handler: httpx.MockTransport) -> LTAClient:
-    return LTAClient("test-key", client=httpx.Client(transport=handler))
+    return LTAClient("test-key", client=httpx.Client(transport=handler), retries=0)
 
 
 def test_transform_arrivals_computes_minutes() -> None:
@@ -196,3 +196,32 @@ def test_cache_bus_stops_writes_static_payload() -> None:
 
 def test_get_bus_arrivals_still_used_by_worker_not_routes() -> None:
     assert get_bus_arrivals.__module__ == "services.lta.bus_arrivals"
+
+
+def test_old_cache_is_marked_stale_without_calling_lta() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500)
+
+    redis = FakeRedis(decode_responses=True)
+    store = CacheStore(redis)
+    existing = CachedStopArrivals(
+        bus_stop_code="22009",
+        cached_at=datetime(2026, 9, 17, 4, 1, tzinfo=timezone.utc),
+        stale=False,
+        services=[],
+    )
+    store.set_json(arrivals_key("22009"), existing, 30)
+    now = datetime(2026, 9, 17, 4, 5, tzinfo=timezone.utc)
+
+    with _lta(httpx.MockTransport(handler)) as client:
+        cached = get_cached_arrivals(
+            client,
+            store,
+            "22009",
+            ttl_seconds=30,
+            now=now,
+            stale_after_seconds=90,
+        )
+
+    assert cached.stale is True
+

@@ -1,8 +1,9 @@
 import asyncio
 
+import pytest
 from fakeredis import FakeRedis
 
-from app.ws.hub import ConnectionHub
+from app.ws.hub import ConnectionHub, HubLimitError
 from services.cache.keys import WATCH_COUNTS_KEY, WATCHED_STOPS_KEY
 
 
@@ -74,5 +75,27 @@ def test_extra_unwatch_does_not_go_negative() -> None:
         await hub.unwatch_stop("52339")
         await hub.unwatch_stop("52339")
         assert redis.inner.smembers(WATCHED_STOPS_KEY) == set()
+
+    asyncio.run(run())
+
+
+def test_admit_enforces_connection_and_ip_caps() -> None:
+    class DummySocket:
+        def __init__(self, host: str) -> None:
+            self.client = type("Client", (), {"host": host})()
+
+    async def run() -> None:
+        hub = ConnectionHub("redis://unused", max_connections=2, max_per_ip=1)
+        first = DummySocket("10.0.0.1")
+        second = DummySocket("10.0.0.1")
+        third = DummySocket("10.0.0.2")
+        await hub.admit(first)
+        with pytest.raises(HubLimitError):
+            await hub.admit(second)
+        await hub.admit(third)
+        with pytest.raises(HubLimitError):
+            await hub.admit(DummySocket("10.0.0.3"))
+        await hub.release(first)
+        await hub.admit(second)
 
     asyncio.run(run())
