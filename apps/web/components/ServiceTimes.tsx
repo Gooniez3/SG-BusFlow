@@ -4,12 +4,6 @@ import Link from "next/link";
 import { arrivalShort, loadBarColor } from "@/lib/format";
 import type { ServiceArrivals } from "@/lib/types";
 
-function hasBusPosition(service: ServiceArrivals) {
-  return service.arrivals.some(
-    (arrival) => arrival.latitude && arrival.longitude && Math.abs(arrival.latitude) > 0.1,
-  );
-}
-
 export function ServiceTimes({
   service,
   stopCode,
@@ -21,8 +15,7 @@ export function ServiceTimes({
 }) {
   const next = service.arrivals[0];
   const slots = [0, 1, 2].map((index) => service.arrivals[index] ?? null);
-  const live = hasBusPosition(service) && stopCode;
-  const href = live
+  const href = stopCode
     ? `/live/${encodeURIComponent(service.service_no)}?stop=${stopCode}`
     : `/services/${encodeURIComponent(service.service_no)}`;
   const destination = next?.destination_name;

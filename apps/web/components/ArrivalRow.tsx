@@ -22,12 +22,6 @@ function ArrivalTime({ minutes }: { minutes: number | null }) {
   );
 }
 
-function hasBusPosition(service: ServiceArrivals) {
-  return service.arrivals.some(
-    (arrival) => arrival.latitude && arrival.longitude && Math.abs(arrival.latitude) > 0.1,
-  );
-}
-
 export function ArrivalRow({
   service,
   compact = false,
@@ -41,8 +35,7 @@ export function ArrivalRow({
   const following = service.arrivals.slice(1, 3);
   const destination = next?.destination_name;
   const load = loadCopy(next?.load);
-  const live = hasBusPosition(service) && stopCode;
-  const href = live
+  const href = stopCode
     ? `/live/${encodeURIComponent(service.service_no)}?stop=${stopCode}`
     : `/services/${encodeURIComponent(service.service_no)}`;
 

@@ -136,6 +136,11 @@ export function WorkspaceMap() {
         }}
       />
       {mapPage ? <MobileMapOverlay /> : null}
+      {trackedService && selectedStop && buses.length === 0 && !showJourney ? (
+        <p className="pointer-events-none absolute bottom-3 left-3 right-3 z-[1200] rounded-lg bg-[var(--glass)] px-3 py-2 text-xs text-[var(--muted)] md:bottom-8 md:left-4 md:right-20 md:max-w-sm">
+          LTA has not published this bus GPS yet. The numbered badge appears when a location is reported.
+        </p>
+      ) : null}
       <button
         type="button"
         onClick={() => {

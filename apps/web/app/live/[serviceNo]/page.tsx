@@ -10,6 +10,7 @@ import { ServiceFavoriteButton } from "@/components/ServiceFavoriteButton";
 import { ServiceTimes } from "@/components/ServiceTimes";
 import { busesForService } from "@/lib/buses";
 import { loadBarColor, loadCopy } from "@/lib/format";
+import { useServiceLive } from "@/lib/live";
 import { fetchStop } from "@/lib/transport";
 import type { Arrival, Stop } from "@/lib/types";
 import { useWorkspace } from "@/lib/workspace";
@@ -22,8 +23,22 @@ function LiveBusInner() {
   const stopCode = searchParams.get("stop");
   const [stop, setStop] = useState<Stop | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const liveData = preview?.bus_stop_code === stopCode ? preview : null;
-  const service = liveData?.services.find((item) => item.service_no === serviceNo);
+  const previewMatch = preview?.bus_stop_code === stopCode ? preview : null;
+  const previewService = previewMatch?.services.find((item) => item.service_no === serviceNo) ?? null;
+  const liveFeed = useServiceLive(previewService ? null : serviceNo, previewService ? null : stopCode);
+  const liveData = previewMatch;
+  const service = previewService
+    ? previewService
+    : liveFeed.data
+      ? {
+          service_no: liveFeed.data.service_no,
+          operator: liveFeed.data.operator ?? "",
+          arrivals: liveFeed.data.arrivals,
+        }
+      : null;
+  const cachedAt = liveData?.cached_at ?? liveFeed.data?.cached_at;
+  const stale = liveData?.stale ?? liveFeed.data?.stale;
+  const badgeStatus = previewService ? liveStatus : liveFeed.status;
 
   useEffect(() => {
     if (stopCode) setSelectedCode(stopCode);
@@ -78,7 +93,7 @@ function LiveBusInner() {
         }
         extra={<ServiceFavoriteButton iconOnly serviceNo={serviceNo} operator={service?.operator} />}
       />
-      <LiveBadge cachedAt={liveData?.cached_at} stale={liveData?.stale} status={liveStatus} />
+      <LiveBadge cachedAt={cachedAt} stale={stale} status={badgeStatus} />
       {previewError ? (
         <ErrorState
           title="Live arrivals delayed"
