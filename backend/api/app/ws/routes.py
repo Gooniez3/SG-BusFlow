@@ -4,6 +4,7 @@ import asyncio
 import logging
 
 from fastapi import APIRouter, Path, Query, WebSocket, WebSocketDisconnect
+from starlette.websockets import WebSocketState
 
 from app.core.codes import SERVICE_NO_PATTERN, STOP_CODE_PATTERN
 from app.core.config import get_settings
@@ -22,6 +23,39 @@ def _hub(websocket: WebSocket) -> ConnectionHub:
     return websocket.app.state.hub
 
 
+def _connected(websocket: WebSocket) -> bool:
+    return websocket.client_state == WebSocketState.CONNECTED
+
+
+async def _send_json(websocket: WebSocket, payload: dict) -> bool:
+    if not _connected(websocket):
+        return False
+    try:
+        await websocket.send_json(payload)
+        return True
+    except (RuntimeError, WebSocketDisconnect):
+        return False
+
+
+async def _send_text(websocket: WebSocket, text: str) -> bool:
+    if not _connected(websocket):
+        return False
+    try:
+        await websocket.send_text(text)
+        return True
+    except (RuntimeError, WebSocketDisconnect):
+        return False
+
+
+async def _close(websocket: WebSocket, code: int) -> None:
+    if not _connected(websocket):
+        return
+    try:
+        await websocket.close(code=code)
+    except (RuntimeError, WebSocketDisconnect):
+        return
+
+
 async def _snapshot(code: str) -> dict:
     def load() -> dict:
         db = SessionLocal()
@@ -35,14 +69,16 @@ async def _snapshot(code: str) -> dict:
 
 async def _pump(websocket: WebSocket) -> None:
     idle = get_settings().ws_idle_seconds
-    while True:
+    while _connected(websocket):
         try:
             message = await asyncio.wait_for(websocket.receive_text(), timeout=idle)
         except TimeoutError:
-            await websocket.close(code=1001)
+            await _close(websocket, 1001)
+            return
+        except WebSocketDisconnect:
             return
         if message == "ping":
-            await websocket.send_text("pong")
+            await _send_text(websocket, "pong")
 
 
 async def _bind(websocket: WebSocket) -> bool:
@@ -51,8 +87,8 @@ async def _bind(websocket: WebSocket) -> bool:
         await _hub(websocket).admit(websocket)
         return True
     except HubLimitError as exc:
-        await websocket.send_json({"type": "error", "detail": exc.detail})
-        await websocket.close(code=1013)
+        await _send_json(websocket, {"type": "error", "detail": exc.detail})
+        await _close(websocket, 1013)
         return False
 
 
@@ -60,9 +96,9 @@ async def _send_snapshot_or_live_error(websocket: WebSocket, code: str) -> dict 
     try:
         return await _snapshot(code)
     except LiveSnapshotError as exc:
-        await websocket.send_json({"type": "error", "detail": exc.detail})
+        await _send_json(websocket, {"type": "error", "detail": exc.detail})
         if exc.status_code == 404:
-            await websocket.close(code=1008)
+            await _close(websocket, 1008)
             return None
         return {}
 
@@ -84,11 +120,12 @@ async def stop_socket(
         if payload is None:
             return
         if payload:
-            await websocket.send_json(
-                {"type": "snapshot", "channel": "stop", "id": code, "payload": payload}
+            await _send_json(
+                websocket,
+                {"type": "snapshot", "channel": "stop", "id": code, "payload": payload},
             )
         await _pump(websocket)
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, RuntimeError):
         pass
     finally:
         await hub.unsubscribe(channel, websocket)
@@ -125,7 +162,8 @@ async def service_socket(
                     ),
                     None,
                 )
-                await websocket.send_json(
+                await _send_json(
+                    websocket,
                     {
                         "type": "snapshot",
                         "channel": "service",
@@ -139,10 +177,10 @@ async def service_socket(
                             "operator": match.get("operator") if match else None,
                             "arrivals": match.get("arrivals") if match else [],
                         },
-                    }
+                    },
                 )
         await _pump(websocket)
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, RuntimeError):
         pass
     finally:
         await hub.unsubscribe(channel, websocket)
@@ -158,8 +196,8 @@ async def bus_socket(websocket: WebSocket, bus_id: str) -> None:
     try:
         service_no, stop_code, index = parse_bus_id(bus_id)
     except ValueError:
-        await websocket.send_json({"type": "error", "detail": "Invalid bus id"})
-        await websocket.close(code=1008)
+        await _send_json(websocket, {"type": "error", "detail": "Invalid bus id"})
+        await _close(websocket, 1008)
         await _hub(websocket).release(websocket)
         return
     canonical = make_bus_id(service_no, stop_code, index)
@@ -182,7 +220,8 @@ async def bus_socket(websocket: WebSocket, bus_id: str) -> None:
             )
             arrivals = match.get("arrivals") if match else []
             arrival = arrivals[index - 1] if index <= len(arrivals) else None
-            await websocket.send_json(
+            await _send_json(
+                websocket,
                 {
                     "type": "snapshot",
                     "channel": "bus",
@@ -198,10 +237,10 @@ async def bus_socket(websocket: WebSocket, bus_id: str) -> None:
                         "stale": payload["stale"],
                         "age_seconds": payload.get("age_seconds"),
                     },
-                }
+                },
             )
         await _pump(websocket)
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, RuntimeError):
         pass
     finally:
         await hub.unsubscribe(channel, websocket)

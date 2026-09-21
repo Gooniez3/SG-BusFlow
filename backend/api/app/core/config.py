@@ -35,8 +35,8 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = 120
     rate_limit_assistant_per_minute: int = 20
     rate_limit_journey_per_minute: int = 40
-    ws_max_connections: int = 200
-    ws_max_connections_per_ip: int = 8
+    ws_max_connections: int = 400
+    ws_max_connections_per_ip: int = 32
     ws_idle_seconds: int = 90
     lta_retry_attempts: int = 2
     lta_retry_backoff_seconds: float = 0.25
