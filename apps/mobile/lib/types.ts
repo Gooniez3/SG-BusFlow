@@ -97,3 +97,45 @@ export type JourneyPlanResponse = {
   network_ready: boolean;
   options: JourneyOption[];
 };
+
+export type AssistantCard = {
+  kind: string;
+  title: string;
+  subtitle: string | null;
+  href: string | null;
+  service_no?: string | null;
+  stop_code?: string | null;
+  duration_min?: number | null;
+  transfers?: number | null;
+  live_minutes?: number | null;
+};
+
+export type AssistantChatResponse = {
+  reply: string;
+  cards: AssistantCard[];
+};
+
+export type AssistantStatus = {
+  ready: boolean;
+  detail: string | null;
+};
+
+export type AssistantContext = {
+  stop_code?: string;
+  stop_name?: string;
+  service_no?: string;
+  lat?: number;
+  lng?: number;
+  journey?: {
+    from_label?: string;
+    to_label?: string;
+    from_lat?: number;
+    from_lng?: number;
+    to_lat?: number;
+    to_lng?: number;
+    from_stop?: string;
+    to_stop?: string;
+    duration_min?: number;
+    summary?: string;
+  };
+};

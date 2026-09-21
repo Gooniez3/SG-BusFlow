@@ -255,6 +255,7 @@ def plan_journeys(
     origin_label: str = "Origin",
     dest_label: str = "Destination",
     max_options: int = MAX_OPTIONS,
+    prefer: str = "fastest",
 ) -> list[dict[str, Any]]:
     best: dict[str, list[Candidate]] = {}
 
@@ -355,7 +356,13 @@ def plan_journeys(
                 }
             )
 
-    options.sort(key=lambda item: (item["duration_min"], item["transfers"], item["walk_min"]))
+    options.sort(
+        key=lambda item: (
+            (item["transfers"], item["duration_min"], item["walk_min"])
+            if prefer == "fewest_transfers"
+            else (item["duration_min"], item["transfers"], item["walk_min"])
+        )
+    )
     return options[:max_options]
 
 

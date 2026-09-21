@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Heart, Map, MapPin, Search, UserCircle } from "lucide-react-native";
+import { Heart, Map, MapPin, MessageCircle, Search } from "lucide-react-native";
 import { usePalette } from "@/lib/theme";
 
 export default function TabLayout() {
@@ -52,10 +52,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="ai"
+        options={{
+          title: "AI",
+          tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size} strokeWidth={2} />,
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
-          tabBarIcon: ({ color, size }) => <UserCircle color={color} size={size} strokeWidth={2} />,
+          href: null,
         }}
       />
     </Tabs>

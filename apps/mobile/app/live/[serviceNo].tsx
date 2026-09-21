@@ -10,6 +10,7 @@ import { IconButton } from "@/components/ThemeToggle";
 import { Card, Muted, ServiceRow } from "@/components/Ui";
 import { busesForService } from "@/lib/buses";
 import { fetchStop } from "@/lib/api";
+import { rememberService, rememberStop } from "@/lib/ai-context";
 import { toggleFavoriteService } from "@/lib/favorites";
 import { loadBarColor, loadCopy } from "@/lib/format";
 import { useServiceLive } from "@/lib/live";
@@ -47,7 +48,11 @@ export default function LiveScreen() {
     let cancelled = false;
     fetchStop(stopCode)
       .then((stopData) => {
-        if (!cancelled) setStop(stopData);
+        if (!cancelled) {
+          setStop(stopData);
+          void rememberStop({ code: stopData.code, name: stopData.name });
+          if (serviceNo) void rememberService(serviceNo);
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : "Could not load live bus");

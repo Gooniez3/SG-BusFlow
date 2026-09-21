@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { IconButton } from "@/components/ThemeToggle";
 import { Card, Muted, ServiceRow } from "@/components/Ui";
 import { fetchNearby, fetchStop } from "@/lib/api";
+import { rememberStop } from "@/lib/ai-context";
 import { busesFromServices, uniqueBuses } from "@/lib/buses";
 import { isFavorite, toggleFavorite } from "@/lib/favorites";
 import { walkParts } from "@/lib/format";
@@ -46,6 +47,7 @@ export default function StopScreen() {
         if (cancelled) return;
         setStop(stopData);
         setSaved(favorite);
+        void rememberStop({ code: stopData.code, name: stopData.name });
         const others = nearby.stops.filter((item) => item.code !== stopData.code);
         setNearbyStops([stopData, ...others].slice(0, 12));
         setError(null);

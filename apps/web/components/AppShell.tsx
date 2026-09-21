@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { Heart, Map, MapPin, Search, UserCircle } from "lucide-react";
+import { Heart, Map, MapPin, MessageCircle, Search, UserCircle } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WorkspaceMap } from "@/components/WorkspaceMap";
 import { ThemeProvider } from "@/lib/theme";
@@ -14,6 +14,7 @@ const DESKTOP_LINKS = [
   { href: "/search", label: "Search", icon: Search },
   { href: "/nearby", label: "Nearby", icon: MapPin },
   { href: "/favorites", label: "Favorites", icon: Heart },
+  { href: "/ai", label: "AI", icon: MessageCircle },
 ];
 
 const MOBILE_LINKS = [
@@ -21,6 +22,7 @@ const MOBILE_LINKS = [
   { href: "/search", label: "Search", icon: Search },
   { href: "/map", label: "Map", icon: Map },
   { href: "/favorites", label: "Saved", icon: Heart },
+  { href: "/ai", label: "AI", icon: MessageCircle },
 ];
 
 function navActive(pathname: string, href: string) {
@@ -103,7 +105,7 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
         className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--line)] bg-[var(--card)] pb-[env(safe-area-inset-bottom)] md:hidden"
         aria-label="Primary"
       >
-        <div className="grid grid-cols-4">
+        <div className="grid grid-cols-5">
           {MOBILE_LINKS.map((link) => {
             const active = navActive(pathname, link.href);
             const Icon = link.icon;

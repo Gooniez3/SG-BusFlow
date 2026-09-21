@@ -27,6 +27,50 @@ class Settings(BaseSettings):
     cors_origins: str = (
         "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:8081,http://127.0.0.1:8081"
     )
+    groq_api_key: str = ""
+    gemini_api_key: str = ""
+    openai_api_key: str = ""
+    openai_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
+    openai_model: str = "gemini-3.6-flash"
+
+    def llm_provider(self) -> str:
+        if self.groq_api_key.strip():
+            return "groq"
+        if self.gemini_api_key.strip():
+            return "gemini"
+        if self.openai_api_key.strip():
+            return "openai"
+        return ""
+
+    def llm_api_key(self) -> str:
+        provider = self.llm_provider()
+        if provider == "groq":
+            return self.groq_api_key.strip()
+        if provider == "gemini":
+            return self.gemini_api_key.strip()
+        return self.openai_api_key.strip()
+
+    def llm_base_url(self) -> str:
+        if self.llm_provider() == "groq":
+            return "https://api.groq.com/openai/v1"
+        url = (self.openai_base_url or "").strip()
+        if self.llm_provider() == "openai" and "generativelanguage.googleapis.com" in url:
+            return "https://api.openai.com/v1"
+        return url or "https://generativelanguage.googleapis.com/v1beta/openai"
+
+    def llm_model(self) -> str:
+        model = (self.openai_model or "").strip()
+        if self.llm_provider() == "groq":
+            if model and not model.startswith("gemini") and model != "gpt-4o-mini":
+                return model
+            return "openai/gpt-oss-120b"
+        model = model or "gemini-3.6-flash"
+        return {
+            "gemini-2.5-flash": "gemini-3.6-flash",
+            "gemini-2.0-flash": "gemini-3.6-flash",
+            "gemini-1.5-flash": "gemini-3.6-flash",
+            "gpt-4o-mini": "gemini-3.6-flash",
+        }.get(model, model)
 
     def watch_stop_codes(self) -> list[str]:
         return [code.strip() for code in self.lta_watch_stops.split(",") if code.strip()]

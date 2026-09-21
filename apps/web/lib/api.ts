@@ -1,4 +1,7 @@
 import type {
+  AssistantChatResponse,
+  AssistantContext,
+  AssistantStatus,
   JourneyPlanResponse,
   NearbyResponse,
   ServiceDetailResponse,
@@ -86,4 +89,39 @@ export function fetchJourneys(params: {
     from_label: params.fromLabel,
     to_label: params.toLabel,
   });
+}
+
+export async function postAssistantChat(
+  messages: { role: "user" | "assistant"; content: string }[],
+  context?: AssistantContext,
+) {
+  const url = new URL("/api/v1/assistant/chat", API_URL);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60_000);
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages, context }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => null);
+      const message =
+        typeof detail?.detail === "string" ? detail.detail : `Request failed (${response.status})`;
+      throw new Error(message);
+    }
+    return response.json() as Promise<AssistantChatResponse>;
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Request timed out. Try again.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function fetchAssistantStatus() {
+  return getJson<AssistantStatus>("/api/v1/assistant/status");
 }

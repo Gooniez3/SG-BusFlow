@@ -145,3 +145,41 @@ def test_same_point_does_not_return_zero_minute_walk() -> None:
         dest_stops=[(origin, 0)],
     )
     assert options == []
+
+
+def test_prefer_fewest_transfers_ranks_one_change_first() -> None:
+    origin = _stop("A", 1.3400, 103.7000)
+    mid = _stop("D", 1.3450, 103.8500)
+    hop = _stop("E", 1.3470, 103.8800)
+    dest = _stop("C", 1.3500, 103.9900)
+    graph = build_graph(
+        [
+            ("8", 1, 1, 0.0, origin),
+            ("8", 1, 2, 4.0, mid),
+            ("9", 1, 1, 0.0, mid),
+            ("9", 1, 2, 3.0, hop),
+            ("10", 1, 1, 0.0, hop),
+            ("10", 1, 2, 4.0, dest),
+            ("12", 1, 1, 0.0, origin),
+            ("12", 1, 2, 8.0, mid),
+            ("24", 1, 1, 0.0, mid),
+            ("24", 1, 2, 40.0, dest),
+        ]
+    )
+    fastest = plan_journeys(
+        graph=graph,
+        origin=(origin.lat, origin.lng),
+        dest=(dest.lat, dest.lng),
+        origin_stops=[(origin, 0)],
+        dest_stops=[(dest, 0)],
+    )
+    fewest = plan_journeys(
+        graph=graph,
+        origin=(origin.lat, origin.lng),
+        dest=(dest.lat, dest.lng),
+        origin_stops=[(origin, 0)],
+        dest_stops=[(dest, 0)],
+        prefer="fewest_transfers",
+    )
+    assert fastest[0]["transfers"] == 2
+    assert fewest[0]["transfers"] == 1

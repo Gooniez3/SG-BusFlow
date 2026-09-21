@@ -7,6 +7,7 @@ import { LeafletMap } from "@/components/LeafletMap";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState, Muted } from "@/components/Ui";
 import { fetchJourneys } from "@/lib/api";
+import { rememberJourney } from "@/lib/ai-context";
 import { journeyPoints, journeySummary, nextBusMinutes, samePlace, transferLabel } from "@/lib/journey";
 import { usePalette } from "@/lib/theme";
 import type { JourneyOption, JourneyPlanResponse, Stop } from "@/lib/types";
@@ -54,6 +55,19 @@ export default function PlanScreen() {
           setPlan(result);
           setSelected((current) => result.options.find((item) => item.id === current?.id) ?? result.options[0] ?? null);
           setError(null);
+          const option = result.options[0];
+          void rememberJourney({
+            from_label: result.from_label,
+            to_label: result.to_label,
+            from_lat: result.from_lat,
+            from_lng: result.from_lng,
+            to_lat: result.to_lat,
+            to_lng: result.to_lng,
+            from_stop: params.from_stop,
+            to_stop: params.to,
+            duration_min: option?.duration_min,
+            summary: option ? journeySummary(option) : undefined,
+          });
         })
         .catch((err: unknown) => {
           if (!cancelled && !silent) setError(err instanceof Error ? err.message : "Could not plan this journey");
