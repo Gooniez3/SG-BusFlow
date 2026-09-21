@@ -38,12 +38,13 @@ function navActive(pathname: string, href: string) {
 function Wordmark() {
   return (
     <Link href="/" className="flex items-center gap-2" aria-label="SG BusFlow home">
-      <span className="bf-on-accent flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--accent)]" aria-hidden>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M2 11c3-6 9-6 12 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          <circle cx="8" cy="5" r="1.4" fill="currentColor" />
-        </svg>
-      </span>
+      <img
+        src="/logo-mark.png?v=4"
+        alt=""
+        width={40}
+        height={40}
+        className="h-10 w-10 object-contain"
+      />
       <span className="text-[15px] font-semibold tracking-tight">SG BusFlow</span>
     </Link>
   );
