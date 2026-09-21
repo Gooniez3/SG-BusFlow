@@ -82,7 +82,7 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={() => setProfileOpen((value) => !value)}
             className="hidden h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--card)] text-[var(--muted)] md:flex"
-            aria-label="Account"
+            aria-label="Profile"
           >
             <UserCircle size={18} strokeWidth={2} />
           </button>
@@ -90,7 +90,7 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
       </header>
       {profileOpen ? (
         <div className="border-b border-[var(--line)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--muted)]">
-          Accounts come later. Favorites stay on this device.
+          Saved stops stay on this device. No account needed.
         </div>
       ) : null}
       <div className="flex min-h-0 flex-1 max-md:pb-14">

@@ -15,11 +15,11 @@ export default function ProfileScreen() {
         <ThemeToggle />
       </View>
       <Card>
-        <Text style={{ color: palette.ink, fontWeight: "600", fontSize: 16 }}>Accounts come later</Text>
+        <Text style={{ color: palette.ink, fontWeight: "600", fontSize: 16 }}>On this phone</Text>
         <View style={{ marginTop: 6 }}>
           <Muted>
-            Sign-in is Phase 12. Favorites stay on this phone, and arrivals still come from the same FastAPI + LTA
-            data — never invented.
+            Saved stops and services stay on this device. BusFlow asks for location to find nearby buses. No account
+            needed.
           </Muted>
         </View>
       </Card>

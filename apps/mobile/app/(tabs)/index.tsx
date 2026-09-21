@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from "react-native";
+import { AppState, Pressable, Text, View } from "react-native";
 import { MapPin, Navigation, RefreshCw } from "lucide-react-native";
 import { useRouter } from "expo-router";
 
@@ -7,11 +7,11 @@ import { StopPreview } from "@/components/StopPreview";
 import { IconButton, ThemeToggle } from "@/components/ThemeToggle";
 import { fetchNearby } from "@/lib/api";
 import { readFavorites, toggleFavorite } from "@/lib/favorites";
-import { requestUserLocation, type UserLocation } from "@/lib/location";
+import { enableUserLocation, requestUserLocation, type UserLocation } from "@/lib/location";
 import { useStopLive } from "@/lib/live";
 import { usePalette } from "@/lib/theme";
 import type { Stop } from "@/lib/types";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export default function NearbyScreen() {
   const palette = usePalette();
@@ -24,10 +24,10 @@ export default function NearbyScreen() {
   const [savedCodes, setSavedCodes] = useState<string[]>([]);
   const live = useStopLive(openCode);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (mode: "read" | "enable" = "read") => {
     setLoading(true);
     try {
-      const current = await requestUserLocation();
+      const current = mode === "enable" ? await enableUserLocation() : await requestUserLocation();
       setLocation(current);
       const nearby = await fetchNearby(current.lat, current.lng);
       setStops(nearby.stops);
@@ -39,8 +39,18 @@ export default function NearbyScreen() {
     }
   }, []);
 
+  const deniedRef = useRef(false);
+  deniedRef.current = Boolean(location?.denied);
+
   useEffect(() => {
     void load();
+  }, [load]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active" && deniedRef.current) void load("read");
+    });
+    return () => sub.remove();
   }, [load]);
 
   useEffect(() => {
@@ -57,13 +67,30 @@ export default function NearbyScreen() {
             <Muted>
               {loading && !location
                 ? "Finding your location"
-                : location?.isDemo
-                  ? `Demo pin · ${location.label}`
-                  : "Using your current location"}
+                : location?.denied
+                  ? "Location is off · showing a demo area"
+                  : location?.isDemo
+                    ? `Demo pin · ${location.label}`
+                    : "Using your current location"}
             </Muted>
           </View>
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {location?.denied || location?.isDemo ? (
+            <Pressable
+              onPress={() => void load("enable")}
+              style={{
+                height: 36,
+                borderRadius: 999,
+                backgroundColor: palette.accent,
+                paddingHorizontal: 12,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: palette.onAccent, fontSize: 12, fontWeight: "600" }}>Turn on location</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={() => void load()}
             style={{

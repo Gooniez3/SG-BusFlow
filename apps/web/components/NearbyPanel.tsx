@@ -31,12 +31,23 @@ export function NearbyPanel() {
             <Navigation size={14} strokeWidth={2} />
             {locationLoading
               ? "Finding your location"
-              : location?.isDemo
-                ? `Demo pin · ${location.label}`
-                : "Using your current location"}
+              : location?.denied
+                ? "Location is off · showing a demo area"
+                : location?.isDemo
+                  ? `Demo pin · ${location.label}`
+                  : "Using your current location"}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {location?.denied || location?.isDemo ? (
+            <button
+              type="button"
+              onClick={reload}
+              className="bf-on-accent flex h-9 items-center rounded-full bg-[var(--accent)] px-3 text-xs font-medium"
+            >
+              Turn on location
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={reload}
