@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from "react-native";
 
 import { Card, Muted, Screen, Title } from "@/components/Ui";
+import { NotifySettings } from "@/components/NotifySettings";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { usePalette, useTheme } from "@/lib/theme";
 
@@ -23,6 +24,7 @@ export default function ProfileScreen() {
           </Muted>
         </View>
       </Card>
+      <NotifySettings />
       <Card>
         <Text style={{ color: palette.ink, fontWeight: "600", fontSize: 16 }}>Appearance</Text>
         <View style={{ marginTop: 6 }}>

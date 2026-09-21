@@ -21,7 +21,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION", "POST_NOTIFICATIONS"]
     },
     "web": {
       "bundler": "metro",
@@ -42,6 +42,13 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "SG BusFlow uses your location to find nearby bus stops."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0F9D8A",
+          "defaultChannel": "arrivals"
         }
       ]
     ],

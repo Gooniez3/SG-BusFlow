@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { EmptyState, Muted } from "@/components/Ui";
 import { fetchJourneys } from "@/lib/api";
 import { rememberJourney } from "@/lib/ai-context";
+import { rememberJourneyWatch } from "@/lib/notify";
 import { journeyPoints, journeySummary, nextBusMinutes, samePlace, transferLabel } from "@/lib/journey";
 import { usePalette } from "@/lib/theme";
 import type { JourneyOption, JourneyPlanResponse, Stop } from "@/lib/types";
@@ -53,9 +54,11 @@ export default function PlanScreen() {
         .then((result) => {
           if (cancelled) return;
           setPlan(result);
-          setSelected((current) => result.options.find((item) => item.id === current?.id) ?? result.options[0] ?? null);
+          const nextOption = result.options.find((item) => item.id === selected?.id) ?? result.options[0] ?? null;
+          setSelected(nextOption);
           setError(null);
-          const option = result.options[0];
+          void rememberJourneyWatch(nextOption, result.to_label);
+          const option = nextOption;
           void rememberJourney({
             from_label: result.from_label,
             to_label: result.to_label,
@@ -150,7 +153,10 @@ export default function PlanScreen() {
           return (
             <Pressable
               key={option.id}
-              onPress={() => setSelected(option)}
+              onPress={() => {
+                setSelected(option);
+                void rememberJourneyWatch(option, plan.to_label);
+              }}
               style={{
                 borderRadius: 16,
                 borderWidth: 1,

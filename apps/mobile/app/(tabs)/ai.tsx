@@ -10,12 +10,11 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { ArrowUp, Sparkles, UserCircle } from "lucide-react-native";
+import { ArrowUp, Sparkles } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AssistantCards } from "@/components/AssistantCards";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { ProfileButton, ThemeToggle } from "@/components/ThemeToggle";
 import { Card, Muted, Title } from "@/components/Ui";
 import { readAiContext, type StoredAiContext } from "@/lib/ai-context";
 import { fetchAssistantStatus, postAssistantChat } from "@/lib/api";
@@ -98,7 +97,6 @@ function ThinkingDots({ color }: { color: string }) {
 
 export default function AiScreen() {
   const palette = usePalette();
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const scroller = useRef<ScrollView>(null);
   const [items, setItems] = useState<ChatItem[]>([]);
@@ -194,22 +192,7 @@ export default function AiScreen() {
         </View>
         <Title>AI</Title>
         <View style={{ flex: 1 }} />
-        <Pressable
-          onPress={() => router.push("/profile")}
-          accessibilityLabel="Profile"
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            borderWidth: 1,
-            borderColor: palette.line,
-            backgroundColor: palette.bg,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <UserCircle size={18} color={palette.muted} strokeWidth={2} />
-        </Pressable>
+        <ProfileButton />
         <ThemeToggle />
       </View>
       <ScrollView

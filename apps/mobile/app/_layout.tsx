@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
 import { AppThemeProvider, useTheme } from "@/lib/theme";
+import { NotifyWatcher } from "@/components/NotifyWatcher";
 
 export { ErrorBoundary } from "expo-router";
 
@@ -32,6 +33,7 @@ function RootStack() {
 export default function RootLayout() {
   return (
     <AppThemeProvider>
+      <NotifyWatcher />
       <RootStack />
     </AppThemeProvider>
   );

@@ -1,5 +1,6 @@
-import { Moon, Sun } from "lucide-react-native";
+import { Moon, Sun, UserCircle } from "lucide-react-native";
 import { Pressable } from "react-native";
+import { useRouter } from "expo-router";
 
 import { usePalette, useTheme } from "@/lib/theme";
 
@@ -24,6 +25,29 @@ export function ThemeToggle() {
       }}
     >
       {dark ? <Sun size={16} color={palette.ink} strokeWidth={2} /> : <Moon size={16} color={palette.ink} strokeWidth={2} />}
+    </Pressable>
+  );
+}
+
+export function ProfileButton() {
+  const palette = usePalette();
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => router.push("/profile")}
+      accessibilityLabel="Profile"
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: palette.line,
+        backgroundColor: palette.card,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <UserCircle size={18} color={palette.muted} strokeWidth={2} />
     </Pressable>
   );
 }

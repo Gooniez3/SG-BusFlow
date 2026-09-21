@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { JourneyItinerary } from "@/components/JourneyItinerary";
 import { PageHeader } from "@/components/PageHeader";
 import { fetchJourneys } from "@/lib/transport";
+import { rememberJourneyWatch } from "@/lib/notify";
 import { journeyHref, parseJourneySearch } from "@/lib/journey";
 import { useJourneySession } from "@/lib/journey-session";
 import type { JourneyOption, JourneyPlanResponse } from "@/lib/types";
@@ -48,6 +49,7 @@ function DetailInner() {
           setPlan(result);
           const match = result.options.find((item) => item.id === query.optionId) ?? result.options[0] ?? null;
           setSelectedOption(match);
+          rememberJourneyWatch(match, result.to_label);
           setError(null);
         })
         .catch((err: unknown) => {

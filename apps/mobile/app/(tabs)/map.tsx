@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LeafletMap } from "@/components/LeafletMap";
 import { LiveBadge } from "@/components/LiveBadge";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { ProfileButton, ThemeToggle } from "@/components/ThemeToggle";
 import { EmptyState, Mono, Muted, ServiceRow } from "@/components/Ui";
 import { fetchNearby } from "@/lib/api";
 import { busesFromServices, uniqueBuses } from "@/lib/buses";
@@ -136,6 +136,7 @@ export default function MapScreen() {
           <Search size={16} color={palette.muted} strokeWidth={2} />
           <Text style={{ color: palette.muted, fontSize: 14 }}>Search stops and buses</Text>
         </Pressable>
+        <ProfileButton />
         <ThemeToggle />
       </View>
 

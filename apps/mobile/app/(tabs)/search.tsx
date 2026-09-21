@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { BusFront, Clock, Footprints, MapPin, Navigation, Search, X } from "lucide-react-native";
 
 import { EmptyState, Muted, Mono, Screen, SectionLabel, Title } from "@/components/Ui";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { ProfileButton, ThemeToggle } from "@/components/ThemeToggle";
 import { searchServices, searchStops } from "@/lib/api";
 import {
   clearDestinations,
@@ -138,7 +138,10 @@ export default function SearchScreen() {
     <Screen keyboardShouldPersistTaps="handled">
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
         <Title>Search</Title>
-        <ThemeToggle />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <ProfileButton />
+          <ThemeToggle />
+        </View>
       </View>
       <View
         style={{

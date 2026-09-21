@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Heart, Map, MapPin, MessageCircle, Search, UserCircle } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotifyWatcher } from "@/components/NotifyWatcher";
 import { WorkspaceMap } from "@/components/WorkspaceMap";
 import { ThemeProvider } from "@/lib/theme";
 import { WorkspaceProvider } from "@/lib/workspace";
@@ -52,7 +52,6 @@ function Wordmark() {
 
 function ShellChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [profileOpen, setProfileOpen] = useState(false);
 
   return (
     <div className="flex h-dvh flex-col bg-[var(--bg)] text-[var(--ink)]">
@@ -79,21 +78,17 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <button
-            type="button"
-            onClick={() => setProfileOpen((value) => !value)}
-            className="hidden h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--card)] text-[var(--muted)] md:flex"
+          <Link
+            href="/profile"
+            className={`flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--card)] ${
+              pathname.startsWith("/profile") ? "text-[var(--accent)]" : "text-[var(--muted)]"
+            }`}
             aria-label="Profile"
           >
             <UserCircle size={18} strokeWidth={2} />
-          </button>
+          </Link>
         </div>
       </header>
-      {profileOpen ? (
-        <div className="border-b border-[var(--line)] bg-[var(--card)] px-4 py-3 text-sm text-[var(--muted)]">
-          Saved stops stay on this device. No account needed.
-        </div>
-      ) : null}
       <div className="flex min-h-0 flex-1 max-md:pb-14">
         <main className="bf-shell-main min-h-0 w-full overflow-y-auto md:w-[400px] md:shrink-0 md:border-r md:border-[var(--line)] md:overflow-y-auto">
           <div className="bf-shell-main-inner px-3 pt-3 pb-6 md:px-4 md:py-4 md:pb-8">{children}</div>
@@ -138,6 +133,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <ThemeProvider>
       <WorkspaceProvider>
         <JourneyProvider>
+          <NotifyWatcher />
           <ShellChrome>{children}</ShellChrome>
         </JourneyProvider>
       </WorkspaceProvider>

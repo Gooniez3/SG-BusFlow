@@ -5,7 +5,7 @@ import { BusFront, Heart, RefreshCw } from "lucide-react-native";
 
 import { Card, EmptyState, Mono, Muted, Screen, SectionLabel, Title } from "@/components/Ui";
 import { StopPreview } from "@/components/StopPreview";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { ProfileButton, ThemeToggle } from "@/components/ThemeToggle";
 import { fetchStop } from "@/lib/api";
 import {
   readFavoriteServices,
@@ -89,6 +89,7 @@ export default function SavedScreen() {
             <RefreshCw color={palette.muted} size={14} strokeWidth={2} />
             <Text style={{ color: palette.muted, fontSize: 12 }}>Refresh</Text>
           </Pressable>
+          <ProfileButton />
           <ThemeToggle />
         </View>
       </View>

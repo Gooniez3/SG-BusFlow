@@ -7,6 +7,7 @@ import { LeafletMap } from "@/components/LeafletMap";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState, Muted } from "@/components/Ui";
 import { fetchJourneys } from "@/lib/api";
+import { rememberJourneyWatch } from "@/lib/notify";
 import { journeyPoints } from "@/lib/journey";
 import { usePalette } from "@/lib/theme";
 import type { JourneyOption, JourneyPlanResponse, Stop } from "@/lib/types";
@@ -51,7 +52,9 @@ export default function PlanDetailScreen() {
         .then((result) => {
           if (cancelled) return;
           setPlan(result);
-          setOption(result.options.find((item) => item.id === params.option) ?? result.options[0] ?? null);
+          const next = result.options.find((item) => item.id === params.option) ?? result.options[0] ?? null;
+          setOption(next);
+          void rememberJourneyWatch(next, result.to_label);
           setError(null);
         })
         .catch((err: unknown) => {

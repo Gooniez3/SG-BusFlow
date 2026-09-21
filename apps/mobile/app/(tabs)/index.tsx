@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 
 import { EmptyState, Muted, Screen, Title } from "@/components/Ui";
 import { StopPreview } from "@/components/StopPreview";
-import { IconButton, ThemeToggle } from "@/components/ThemeToggle";
+import { IconButton, ProfileButton, ThemeToggle } from "@/components/ThemeToggle";
 import { fetchNearby } from "@/lib/api";
 import { readFavorites, toggleFavorite } from "@/lib/favorites";
 import { enableUserLocation, requestUserLocation, type UserLocation } from "@/lib/location";
@@ -111,6 +111,7 @@ export default function NearbyScreen() {
           <IconButton onPress={() => router.push("/map")}>
             <MapPin size={16} color={palette.muted} strokeWidth={2} />
           </IconButton>
+          <ProfileButton />
           <ThemeToggle />
         </View>
       </View>

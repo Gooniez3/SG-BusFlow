@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { JourneyDetails, JourneyResults } from "@/components/JourneyResults";
 import { PageHeader } from "@/components/PageHeader";
 import { fetchJourneys } from "@/lib/transport";
+import { rememberJourneyWatch } from "@/lib/notify";
 import { journeyDetailHref, parseJourneySearch, samePlace } from "@/lib/journey";
 import { useJourneySession } from "@/lib/journey-session";
 import type { JourneyPlanResponse } from "@/lib/types";
@@ -51,6 +52,7 @@ function JourneyInner() {
             typeof window === "undefined" ? query.optionId : new URLSearchParams(window.location.search).get("option");
           const match = result.options.find((item) => item.id === optionId) ?? result.options[0] ?? null;
           setSelectedOption(match);
+          rememberJourneyWatch(match, result.to_label);
           setError(null);
         })
         .catch((err: unknown) => {
@@ -111,6 +113,7 @@ function JourneyInner() {
           selectedId={selectedOption?.id}
           onSelect={(option) => {
             setSelectedOption(option);
+            rememberJourneyWatch(option, plan?.to_label);
             const params = new URLSearchParams(searchParams.toString());
             params.set("option", option.id);
             router.replace(`/journey?${params.toString()}`, { scroll: false });
