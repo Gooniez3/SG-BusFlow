@@ -1,10 +1,6 @@
 from fastapi.testclient import TestClient
 
 
-def test_ci_failure_probe() -> None:
-    assert False, "deliberate CI failure probe"
-
-
 def test_health_returns_ok(client: TestClient) -> None:
     response = client.get("/health")
 
