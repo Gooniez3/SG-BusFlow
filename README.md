@@ -1,162 +1,234 @@
 # SG BusFlow
 
-Singapore bus arrivals, nearby stops, and journeys. Live times come from [LTA DataMall](https://datamall.lta.gov.sg/). The phone and the website never call LTA themselves.
+**Real-time Singapore bus arrivals, nearby stops, and journeys — on a Next.js site and an Expo app, from one FastAPI service.**
 
-There is no account. Saved stops stay on the device. If GPS is off, the app says so and falls back to a Boon Lay pin so the screens are not empty.
+SG BusFlow shows stops around you, the next buses, and a walk-plus-bus trip. Minutes come from [LTA DataMall](https://datamall.lta.gov.sg/). The website and the phone never call LTA themselves. There is no account: saved stops stay on the device. This repository is the **portfolio / example** source. It runs with Docker on a development machine. It is not deployed.
 
-The app runs on this machine with Docker. It is not hosted.
+[![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Expo](https://img.shields.io/badge/Expo-Go-000020?logo=expo&logoColor=white)](https://expo.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-PostGIS-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis-Live_cache-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 
-## Screenshots
+**Example repository:** [github.com/Gooniez3/SG-BusFlow](https://github.com/Gooniez3/SG-BusFlow)
 
-Light theme. Shot on Expo Go.
+## Product overview
 
-| Nearby | Search |
+A bus app that invents an arrival time is worse than one that says the feed is late. SG BusFlow keeps LTA behind one worker, stores the network in PostgreSQL with PostGIS, and keeps the latest minutes in Redis. Web and Expo only read that API.
+
+If GPS is denied, the app says location is off and uses a Boon Lay pin so the screens are not blank. Light theme is the default. Dark theme is a switch in the header.
+
+## Core features
+
+| Capability | What it provides |
 | --- | --- |
-| ![Nearby stops with live minutes](docs/screenshots/nearby-light.jpg) | ![Search for Blk 27](docs/screenshots/search-light.jpg) |
+| **Nearby stops** | Stops within walking distance, with the next buses on the first stop. |
+| **Search** | Stop name, road, code, or bus number. |
+| **Live arrivals** | Minutes, load, and a map of buses at the stop. Updates over a WebSocket. |
+| **Map** | Nearby stops on OpenStreetMap, with a live sheet for the selected stop. |
+| **Journey** | Walk, bus, and at most two transfers. Ranked by time or by fewer changes. |
+| **Saved** | Stops and services kept on this phone or browser. No login. |
+| **Arrival alerts** | Optional local notification when a saved stop or the last journey's first bus is inside 3, 5, or 8 minutes. Off by default. |
+| **Assistant** | Answers from nearby stops, journeys, and cached arrivals. It does not calculate the route itself. |
+| **Stale data** | If LTA fails, the last cached minutes stay up and are marked late. |
 
-| Stop | Journey |
+## Product walkthrough
+
+Shot on Expo Go, around Lorong 6 Toa Payoh.
+
+### Nearby
+
+![Nearby stops with live minutes at Blk 27](docs/screenshots/nearby-light.jpg)
+
+The nearest stop opens with the buses serving it. Distance is walking distance from the phone.
+
+### Search
+
+![Search results for Blk 27](docs/screenshots/search-light.jpg)
+
+A name search lists nearby matches first, then other stops with the same name.
+
+### Stop
+
+![Blk 27 arrivals and the buses on the map](docs/screenshots/stop-light.jpg)
+
+### Live bus
+
+![Bus 230, next stop, and seats](docs/screenshots/live-light.jpg)
+
+### Journey
+
+![Direct buses from the current location to Toa Payoh Int](docs/screenshots/journey-light.jpg)
+
+The plan is walk, board, and alight. "Next bus" is a cached minute, not a guessed clock time.
+
+### Map
+
+![Map of stops around the current location](docs/screenshots/map-light.jpg)
+
+### Saved and assistant
+
+| Saved on this phone | Assistant |
 | --- | --- |
-| ![Blk 27 live arrivals and map](docs/screenshots/stop-light.jpg) | ![Journey to Toa Payoh Int](docs/screenshots/journey-light.jpg) |
+| ![Saved stops and service 238](docs/screenshots/saved-light.jpg) | ![Assistant listing nearby stops from the API](docs/screenshots/ai-light.jpg) |
 
-| Map | Live bus |
-| --- | --- |
-| ![Map around Toa Payoh](docs/screenshots/map-light.jpg) | ![Bus 230 on the map](docs/screenshots/live-light.jpg) |
-
-| Saved | Assistant |
-| --- | --- |
-| ![Saved stops on the phone](docs/screenshots/saved-light.jpg) | ![Assistant listing nearby stops](docs/screenshots/ai-light.jpg) |
-
-Dark theme uses the same screens.
+### Dark theme
 
 | Nearby | Map |
 | --- | --- |
-| ![Nearby in dark theme](docs/screenshots/nearby-dark.jpg) | ![Map in dark theme](docs/screenshots/map-dark.jpg) |
+| ![Nearby in dark theme](docs/screenshots/nearby-dark.jpg) | ![Selected stop in dark theme](docs/screenshots/map-dark.jpg) |
 
 | Journey | Saved |
 | --- | --- |
 | ![Journey in dark theme](docs/screenshots/journey-dark.jpg) | ![Saved in dark theme](docs/screenshots/saved-dark.jpg) |
 
-## Stack
+## How it works
 
-| Piece | Choice |
+```mermaid
+flowchart LR
+    LTA[LTA DataMall] --> Worker[Worker]
+    Worker --> PG[(PostgreSQL + PostGIS)]
+    Worker --> Redis[(Redis)]
+    API[FastAPI] --> PG
+    API --> Redis
+    Web[Next.js] --> API
+    Expo[Expo Go] --> API
+```
+
+The worker is the only process that calls DataMall. It writes stops, routes, and route-stops into Postgres, and arrivals plus the service list into Redis. FastAPI reads those stores. A WebSocket publishes arrival updates from Redis to whoever is watching that stop.
+
+## Arrival integrity
+
+A minute on screen has to be traceable to LTA.
+
+| Guard | Behavior |
 | --- | --- |
-| Web | Next.js 15, React, Tailwind, Leaflet |
-| Mobile | Expo (Expo Go), React Native |
-| API | FastAPI, Pydantic, SQLAlchemy |
-| Database | PostgreSQL + PostGIS |
-| Cache and live fan-out | Redis, WebSockets |
-| Arrivals | LTA DataMall, one worker |
-| Assistant | Groq, then Gemini, then OpenAI. It only explains results the API already returned. |
-| Checks | Docker Compose, pytest, GitHub Actions |
+| **One caller** | Handlers and clients do not call DataMall. `backend/services/lta/` does. |
+| **No invented times** | Journey ranking uses cached minutes. Missing cache means no live wait, not a made-up one. |
+| **Stale cache** | After an LTA error, the previous payload is returned with `stale: true` and `age_seconds`. |
+| **Redis down** | Stop search and journey planning still use Postgres. Live minutes wait until Redis is back. |
+| **One worker** | The arrival loop is its own process. Extra API containers do not each poll LTA. |
+| **Migrations** | `alembic upgrade head` is a separate command. API startup does not change the schema. |
 
-## How it fits together
+## Technology stack
 
+| Area | Technologies |
+| --- | --- |
+| **Web** | Next.js 15, React 19, TypeScript, Tailwind CSS 4, Leaflet |
+| **Mobile** | Expo, React Native, TypeScript, Expo Go |
+| **API** | Python 3.12, FastAPI, Pydantic, SQLAlchemy, Alembic, GeoAlchemy2 |
+| **Data** | PostgreSQL 16, PostGIS 3.5, Redis 7 |
+| **Live** | WebSockets, Redis pub/sub |
+| **Assistant** | Groq first, then Gemini, then OpenAI. Tools call the same API data. |
+| **Run and check** | Docker Compose, pytest, GitHub Actions |
+
+## Project structure
+
+```text
+SG BusFlow/
+|-- apps/web/                 # Next.js client
+|-- apps/mobile/              # Expo client
+|-- backend/api/              # FastAPI app, Alembic, tests
+|-- backend/services/         # LTA client and Redis cache
+|-- backend/workers/          # Static ingest and arrival loop
+|-- docs/screenshots/         # Expo Go shots used above
+|-- docker-compose.yml        # API, worker, Postgres, Redis
+`-- .github/workflows/ci.yml
 ```
-LTA DataMall
-      │
-      ▼
-   Worker  ──────────────►  PostgreSQL + PostGIS
-      │                     stops, routes, route stops
-      └──────────────►  Redis
-                        arrivals, service list, pub/sub
-                              │
-                              ▼
-                           FastAPI
-                         /api/v1   /ws/v1
-                         ┌────┴────┐
-                         ▼         ▼
-                      Next.js    Expo
+
+## Local development
+
+### Prerequisites
+
+- Docker Desktop
+- Node.js 22
+- An [LTA DataMall](https://datamall.lta.gov.sg/) account key
+
+### Setup
+
+```bash
+git clone https://github.com/Gooniez3/SG-BusFlow.git
+cd SG-BusFlow
 ```
 
-A few decisions that matter:
-
-- Journey times are calculated from stops, walking distance, and cached minutes. The model does not invent a route or a clock time.
-- LTA is called from `backend/services/lta/`, not from request handlers and not from the clients.
-- One worker polls LTA. The API containers do not each poll.
-- Migrations are `alembic upgrade head`. The API does not migrate on startup.
-- If LTA fails, the last cached arrivals are served with `stale: true`. If Redis is down, search and journey planning still use Postgres.
-- WebSockets push stop, service, and bus updates. The load is capped so the map cannot open unlimited sockets.
-
-## Run it
-
-Docker Desktop, Node, and an LTA DataMall key.
-
-```powershell
-copy .env.example .env
-# put LTA_ACCOUNT_KEY in .env
+```bash
+cp .env.example .env
+# Set LTA_ACCOUNT_KEY
 docker compose up --build -d
 docker compose run --rm api alembic upgrade head
 docker compose run --rm worker python -m workers static
 ```
 
-`static` loads stops, services, and routes. Without it, stop search still works from Postgres, but bus-number search says the service list is not cached. After Redis restarts, run `static` again. Redis is not stored on a volume.
-
-Then:
-
-- http://127.0.0.1:8000/health
-- http://127.0.0.1:8000/health/ready
-- http://127.0.0.1:8000/docs
+`static` loads stops, services, and routes. Without it, name search still works from Postgres, but a bus-number search has no catalogue. Run it again after Redis restarts. Redis has no volume. `postgres_data` survives `docker compose down`. `docker compose down -v` deletes the database.
 
 Web:
 
-```powershell
+```bash
 cd apps/web
 npm install
 npm run dev
 ```
 
-Open http://127.0.0.1:3000. It uses `NEXT_PUBLIC_API_URL`, default `http://127.0.0.1:8000`.
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
-Expo, same Wi-Fi as the PC:
+Expo, on the same Wi-Fi as the computer:
 
-```powershell
+```bash
 cd apps/mobile
 npm install
 npx expo start --lan
 ```
 
-The phone uses the Metro host plus port 8000. `EXPO_PUBLIC_API_URL` is the fallback when that host is localhost.
+The phone calls port 8000 on the Metro host. `EXPO_PUBLIC_API_URL` is only the fallback when that host is localhost.
 
-`postgres_data` survives `docker compose down`. `docker compose down -v` deletes it. Without `LTA_ACCOUNT_KEY` the worker stays up and idle.
+API checks: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health), [http://127.0.0.1:8000/health/ready](http://127.0.0.1:8000/health/ready), [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 
-## Environment
+## Environment configuration
 
-Copy `.env.example` to `.env`. Do not commit `.env`.
+Use [.env.example](.env.example). Never commit `.env`.
 
-| Variable | What it is |
+| Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | Host URL. Compose overrides this inside containers to `postgres:5432`. |
-| `REDIS_URL` | Host URL. Compose overrides this to `redis:6379`. |
-| `LTA_ACCOUNT_KEY` | DataMall key. Empty means no ingest. |
+| `DATABASE_URL` | Host Postgres URL. Compose points containers at `postgres:5432`. |
+| `REDIS_URL` | Host Redis URL. Compose points containers at `redis:6379`. |
+| `LTA_ACCOUNT_KEY` | DataMall key. Empty means the worker stays up and does not ingest. |
 | `CORS_ORIGINS` | Local web (`:3000`) and Expo (`:8081`). |
-| `GROQ_API_KEY` | Preferred assistant key. `GEMINI_API_KEY` and `OPENAI_API_KEY` are fallbacks. |
-| `LTA_WATCH_STOPS` | Optional stop codes for the arrival loop. Open stops are watched as well. |
+| `GROQ_API_KEY` | Assistant. `GEMINI_API_KEY` and `OPENAI_API_KEY` are fallbacks. |
+| `LTA_WATCH_STOPS` | Optional codes for the arrival loop. Stops you open are watched too. |
 
-`backend/api/.env` overrides the root file when both exist. Compose still forces the database and Redis hosts inside containers.
+If `backend/api/.env` also exists, its values override the root file. Compose still forces the database and Redis hosts inside containers.
 
-## API
+## Reliability and engineering
 
-| Method | Path | |
-| --- | --- | --- |
-| GET | `/health` | Process is up. Does not check LTA. |
-| GET | `/health/ready` | Database and Redis. `degraded` is still HTTP 200. |
-| GET | `/api/v1/stops/nearby` | Stops within walking distance. |
-| GET | `/api/v1/stops/search` | Stop name, road, or code. |
-| GET | `/api/v1/stops/{code}/arrivals` | Live minutes. Includes `stale` and `age_seconds`. |
-| GET | `/api/v1/services/search` | Bus numbers from the Redis catalogue. |
-| GET | `/api/v1/journeys` | Walk, bus, and at most two transfers. |
-| POST | `/api/v1/assistant/chat` | Explains a question using the endpoints above. |
-| WS | `/ws/v1/stops/{code}` | Arrival updates for one stop. |
+- **Health:** `/health` only checks that the process is up, so an LTA outage does not mark the API dead. `/health/ready` reports database and Redis.
+- **Cache age:** arrival payloads include `stale` and `age_seconds`.
+- **Rate limits:** HTTP, journey, and assistant chat are capped per minute. Tests bypass the limiter.
+- **WebSocket caps:** total connections and connections per address are limited so the map cannot open an unbounded set.
+- **Tests:** from `backend/api`, `python -m pytest -q`.
+- **CI:** `.github/workflows/ci.yml` on pushes to `main` and on pull requests. PostGIS, Redis, `alembic upgrade head`, pytest, web lint and build, Expo typecheck, Docker image build. No LTA calls and no API keys.
 
-## Tests
+## Security and privacy
 
-```powershell
-cd backend/api
-.\.venv\Scripts\python.exe -m pytest -q
-```
+- The DataMall key and model keys live in `.env`, not in Git and not in the image.
+- Clients do not receive those keys.
+- Saved stops are local storage on the device.
+- There is no user account and no password store.
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on pushes to `main` and on pull requests. It starts PostGIS and Redis, applies migrations, runs pytest, lints and builds the web app, typechecks Expo, and builds the Docker image. It does not call LTA and does not need API keys.
+No credentials belong in this repository.
 
-## What this release is not
+## License
 
-No sign-in. No MRT. No public URL. Web and Expo stay on the machine that runs Docker.
+Copyright © 2026 Saw Lwin Htoo. All rights reserved.
+
+This repository is source-visible for portfolio and evaluation purposes. It is **not open source**, and no permission is granted to redistribute, modify, sublicense, sell, or commercially reuse substantial portions of the software without prior written permission. See [LICENSE](LICENSE) for the complete terms.
+
+## Author
+
+**Saw Lwin Htoo (Finn)**
+
+Full-Stack Developer / Software Engineer focused on building modern web applications and production systems for real operators.
+
+- GitHub: [@Gooniez3](https://github.com/Gooniez3)
+- Portfolio: [finn-portfolio-blush.vercel.app](https://finn-portfolio-blush.vercel.app)
+- Related project: [CapyTech POS](https://github.com/Gooniez3/capytech-pos)
