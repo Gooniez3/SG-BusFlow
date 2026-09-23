@@ -51,14 +51,26 @@ export default function SearchScreen() {
     const timer = setTimeout(async () => {
       try {
         const location = await requestUserLocation();
-        const [stopResult, serviceResult] = await Promise.all([
+        const [stopResult, serviceResult] = await Promise.allSettled([
           searchStops(needle, location.lat, location.lng),
           searchServices(needle),
         ]);
         if (cancelled) return;
-        setStops(stopResult.stops);
-        setServices(serviceResult.services);
-        setError(null);
+        if (stopResult.status === "fulfilled") setStops(stopResult.value.stops);
+        else setStops([]);
+        if (serviceResult.status === "fulfilled") setServices(serviceResult.value.services);
+        else setServices([]);
+        const serviceMissing =
+          serviceResult.status === "rejected" &&
+          serviceResult.reason instanceof Error &&
+          serviceResult.reason.message === "Service data is not cached yet";
+        if (stopResult.status === "rejected" && serviceResult.status === "rejected") {
+          setError(serviceMissing ? serviceResult.reason.message : "Search failed. Try again.");
+        } else if (serviceMissing && /^[0-9][0-9A-Za-z]{0,4}$/.test(needle)) {
+          setError("Service data is not cached yet");
+        } else {
+          setError(null);
+        }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Search failed");
       } finally {
