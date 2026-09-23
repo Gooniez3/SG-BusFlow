@@ -93,3 +93,12 @@ Point the clients at `http://localhost:8000` (web) or your LAN IP on port 8000 (
 cd backend/api
 .\.venv\Scripts\python.exe -m pytest -q
 ```
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and on pull requests. It does not call LTA DataMall and does not need API keys.
+
+- **Backend:** PostGIS and Redis service containers, then `alembic upgrade head`, then `pytest`.
+- **Web:** `npm ci`, `npm run lint`, `npm run build`.
+- **Expo:** `npm ci` and `npx tsc --noEmit`. Store builds stay out of CI.
+- **Docker:** `docker compose config` and `docker compose build`, using `.env.example` as a placeholder env file.

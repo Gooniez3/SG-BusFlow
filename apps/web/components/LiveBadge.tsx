@@ -9,7 +9,7 @@ function badgeCopy(status?: LiveStatus, stale?: boolean) {
   if (status === "connecting") return "Connecting";
   if (status === "reconnecting") return "Reconnecting";
   if (status === "offline") return "Offline";
-  if (stale || status === "offline") return "Delayed";
+  if (stale) return "Delayed";
   return "Live";
 }
 
