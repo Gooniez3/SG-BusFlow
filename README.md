@@ -1,53 +1,95 @@
 # SG BusFlow
 
-Real-time Singapore public transport: nearby stops, live arrivals, route exploration, and journey planning.
+Real-time Singapore bus tracking: nearby stops, live arrivals, journeys, and on-device arrival alerts.
 
-This repository is a monorepo for the web app, mobile app, and API. **This commit is the skeleton only** — no applications or services are implemented yet.
-
-Product scope is frozen in [docs/PRODUCT.md](docs/PRODUCT.md). Development order is in [docs/ROADMAP.md](docs/ROADMAP.md).
+Web and Expo talk to one FastAPI service. Arrivals and routes come from LTA DataMall through Redis and PostgreSQL/PostGIS. The AI assistant only explains those results.
 
 ## Architecture
 
 ```
-        LTA DataMall
-             │
-             ▼
-     Python ingestion
-             │
-             ▼
-           Redis
-             │
-             ▼
-   PostgreSQL + PostGIS
-             │
-          FastAPI
-             │
-    ┌────────┴────────┐
-    ▼                 ▼
- Next.js         React Native
-  (web)           (mobile)
+                 LTA DataMall
+                       │
+                       ▼
+                 ┌──────────┐
+                 │  Worker  │
+                 └────┬─────┘
+                      │
+          ┌───────────┴───────────┐
+          ▼                       ▼
+   PostgreSQL + PostGIS         Redis
+          ▲                       ▲
+          └───────────┬───────────┘
+                      │
+                 ┌──────────┐
+                 │ FastAPI  │
+                 └────┬─────┘
+          ┌───────────┴───────────┐
+          ▼                       ▼
+       Next.js                  Expo
+       (host)                  (host)
 ```
 
-| Layer | Stack |
-|-------|--------|
-| Web | Next.js (`apps/web`) |
-| Mobile | React Native + Expo (`apps/mobile`) |
-| API | Python FastAPI (`backend/api`) |
-| Data | LTA DataMall → Redis → PostgreSQL + PostGIS |
+| Layer | Where it runs |
+|-------|----------------|
+| API + worker | Docker Compose |
+| PostgreSQL/PostGIS + Redis | Docker Compose |
+| Web | `apps/web` on the host |
+| Mobile | `apps/mobile` on the host |
 
-## Layout
+## Backend with Docker
 
-```
-apps/web              Next.js client (not scaffolded yet)
-apps/mobile           React Native + Expo (not scaffolded yet)
-backend/api           FastAPI (not scaffolded yet)
-packages/types        Shared types
-packages/config       Shared config
-infrastructure/docker
-infrastructure/terraform
-docs                  Product spec and roadmap
+From a clean checkout:
+
+```powershell
+copy .env.example .env
+docker compose up --build
+docker compose run --rm api alembic upgrade head
 ```
 
-## Local development
+Migrations are a separate command. Starting the API does not change the database.
 
-`docker compose up` will eventually start `web`, `mobile`, `api`, `postgres`, and `redis`. Services are not defined yet.
+Then:
+
+- http://localhost:8000/health
+- http://localhost:8000/health/ready
+
+Set `LTA_ACCOUNT_KEY` in `.env` before expecting the worker to ingest stops and arrivals. Without that key the worker stays running and idle. If `backend/api/.env` also exists, its values override the root file. Inside the containers, Compose still forces `DATABASE_URL` and `REDIS_URL` onto the Postgres and Redis services. `.env` stays out of Git.
+
+`postgres_data` is a named volume, so `docker compose down` keeps the database. `docker compose down -v` deletes it. Redis has no volume; a restart comes back empty, and the API keeps serving with Phase 14 fail-soft behaviour.
+
+Useful commands:
+
+```powershell
+docker compose build
+docker compose up -d
+docker compose logs -f api worker
+docker compose restart redis
+docker compose restart worker
+```
+
+Postgres is published on **localhost:5433** and Redis on **localhost:6379**, so a host venv can still use `backend/api/.env`.
+
+## Web and Expo
+
+Leave these outside Docker.
+
+```powershell
+cd apps/web
+npm install
+npm run dev
+```
+
+```powershell
+cd apps/mobile
+npm install
+npx expo start --lan
+```
+
+Point the clients at `http://localhost:8000` (web) or your LAN IP on port 8000 (Expo).
+
+## Tests
+
+```powershell
+cd backend/api
+.\.venv\Scripts\python.exe -m pytest -q
+```

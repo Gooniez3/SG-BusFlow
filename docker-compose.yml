@@ -27,7 +27,59 @@ services:
       timeout: 3s
       retries: 10
 
-  # Later: api, web, mobile
+  api:
+    build:
+      context: ./backend
+      dockerfile: api/Dockerfile
+    env_file:
+      - path: .env
+        required: true
+      - path: backend/api/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg://busflow:busflow@postgres:5432/busflow
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import json,urllib.request; body=json.load(urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)); raise SystemExit(0 if body.get('status')=='ok' else 1)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: api/Dockerfile
+    command: ["python", "-m", "workers", "arrivals-loop"]
+    working_dir: /app
+    env_file:
+      - path: .env
+        required: true
+      - path: backend/api/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg://busflow:busflow@postgres:5432/busflow
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:

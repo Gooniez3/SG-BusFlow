@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import logging
+import time
 
 from workers.runtime import runtime
 from workers.jobs import ingest_arrivals, ingest_static, run_arrivals_loop
+
+logger = logging.getLogger("workers")
 
 
 def main() -> None:
@@ -14,6 +18,17 @@ def main() -> None:
         help="comma-separated bus stop codes (overrides LTA_WATCH_STOPS)",
     )
     args = parser.parse_args()
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+    from app.core.config import get_settings
+
+    if not get_settings().lta_account_key.strip():
+        logger.error("LTA_ACCOUNT_KEY is not set; worker is idle until it is configured")
+        while True:
+            time.sleep(30)
 
     client, store, settings = runtime()
     stop_codes = (
