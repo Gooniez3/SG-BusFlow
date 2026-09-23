@@ -40,14 +40,14 @@ Dark theme uses the same screens.
 
 | Piece | Choice |
 | --- | --- |
-| Web | Next.js 15, Tailwind, Leaflet |
-| Mobile | Expo (Expo Go) |
+| Web | Next.js 15, React, Tailwind, Leaflet |
+| Mobile | Expo (Expo Go), React Native |
 | API | FastAPI, Pydantic, SQLAlchemy |
 | Database | PostgreSQL + PostGIS |
-| Cache and live fan-out | Redis |
+| Cache and live fan-out | Redis, WebSockets |
 | Arrivals | LTA DataMall, one worker |
 | Assistant | Groq, then Gemini, then OpenAI. It only explains results the API already returned. |
-| Checks | pytest, GitHub Actions |
+| Checks | Docker Compose, pytest, GitHub Actions |
 
 ## How it fits together
 
