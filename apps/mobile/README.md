@@ -1,24 +1,12 @@
 # SG BusFlow mobile
 
-Expo app for the same FastAPI backend as the web client. It does not call LTA DataMall itself.
-
-## Run
-
-Keep Docker, the API, and stop ingest running (same as web). Then:
+Expo Go client for the same API as the web app. It does not call LTA.
 
 ```powershell
-cd "C:\Users\sawlw\Desktop\SG BusFlow\apps\mobile"
-npm start
+npm install
+npx expo start --lan
 ```
 
-Scan the QR code with Expo Go. On a physical phone, the app talks to your computer’s LAN address on port 8000 automatically. To force a URL:
+On a phone, use the same Wi-Fi as the computer. The app calls port 8000 on the Metro host. Set `EXPO_PUBLIC_API_URL` only if that host is localhost.
 
-```
-EXPO_PUBLIC_API_URL=http://127.0.0.1:8000
-```
-
-Use `http://10.0.2.2:8000` for the Android emulator if needed.
-
-## Screens
-
-Nearby, Search, Map, Saved, and Profile. Arrivals come from `/api/v1/` only.
+Screens: Nearby, Search, Map, Saved, AI. Profile is in the header. Full setup is in the [root README](../../README.md).

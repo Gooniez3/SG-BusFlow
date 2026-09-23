@@ -1,38 +1,9 @@
-# SG BusFlow — Development roadmap
+# Status
 
-Work one step at a time. Do not ask Cursor to generate the whole product.
+The product in the README is what this repo runs today.
 
-## Sequence
+Shipped: nearby stops, live arrivals, map, search, saved stops on the device, journeys, an assistant that explains those results, local arrival alerts, Docker, and GitHub Actions.
 
-1. Product specification
-2. Monorepo
-3. Python / FastAPI
-4. PostgreSQL + PostGIS
-5. Redis
-6. LTA integration
-7. Bus-stop dataset
-8. Nearby-stop API
-9. Web map
-10. Live arrivals
-11. WebSocket tracking
-12. React Native mobile
-13. Route / service pages
-14. Journey planner
-15. Authentication
-16. Favorites
-17. Notifications
-18. AI assistant
-19. Docker
-20. Tests
-21. CI/CD
-22. AWS
-23. Security
-24. Performance
-25. Portfolio launch
+Not in this repo: user accounts, MRT, and a public deployment. Accounts were dropped on purpose. Saved data stays on the phone or the browser.
 
-## Current status
-
-- **01 Product specification** — this folder (`PRODUCT.md`)
-- **02 Monorepo** — empty skeleton only (this commit)
-
-Next ticket: **03 Python / FastAPI** — `GET /health` only, then `/api/v1/` prefix. No LTA, no database.
+See the root [README](../README.md) for how to run it.

@@ -1,6 +1,6 @@
 # SG BusFlow — Product specification
 
-This document freezes the initial product scope. Later tickets should follow it rather than invent new scope.
+Scope for this repo. The README is the current description of what runs.
 
 ## Product
 
@@ -45,8 +45,6 @@ FastAPI → LTA Service → LTA DataMall
 
 ## Core domain
 
-Documented here; not implemented in this commit.
-
 | Entity | Notes |
 |--------|--------|
 | BusStop | `id`, `code`, `name`, `latitude`, `longitude`, `location` (PostGIS geography/geometry), `road_name` |
@@ -55,9 +53,8 @@ Documented here; not implemented in this commit.
 | BusRouteStop | Ordered stop on a route |
 | Bus | A vehicle on a route |
 | Arrival | Predicted arrival at a stop |
-| User | Added with authentication (later) |
-| FavoriteStop | Later |
-| FavoriteService | Later |
+| FavoriteStop | On the device only. No account. |
+| FavoriteService | On the device only. No account. |
 
 Relationship:
 
@@ -67,32 +64,11 @@ BusService → BusRoute → BusRouteStop → BusStop
 
 Nearby-stop queries use PostGIS on `BusStop.location`, not plain lat/lng comparisons.
 
-## MVP vs later
+## In this repo
 
-**Build first**
+Nearby stops, live arrivals, stop and service pages, map, WebSocket tracking, a deterministic journey planner, on-device saved stops, local arrival alerts, and an assistant that only explains API results.
 
-- Nearby stops (`GET /api/v1/stops/nearby` with PostGIS)
-- Live arrivals
-- Stop and service pages
-- Map
-- WebSocket live tracking
-- Deterministic journey planner (not LLM routing)
-
-**Build later**
-
-- User accounts
-- Favorite stops and services
-- Recent searches, home/work locations
-- Notifications
-- BusFlow AI (explains structured backend results only; must not invent arrival times)
-
-**Last**
-
-- Docker Compose local bring-up (`web`, `mobile`, `api`, `postgres`, `redis`)
-- CI/CD
-- AWS deployment
-- Security and reliability hardening
-- Portfolio polish (landing page, demo, README)
+Not included: accounts, MRT, and a hosted deployment. Docker Compose and GitHub Actions are how the project is run and checked.
 
 ## Non-goals
 
@@ -104,9 +80,7 @@ Nearby-stop queries use PostGIS on `BusStop.location`, not plain lat/lng compari
 
 ## Engineering rules
 
-- Work in small tickets: inspect existing code, explain intended changes, implement, review, test, commit.
-- Introduce basic CI once the backend foundation exists; do not wait until the end.
 - Handle LTA unavailability without crashing: use cached data and tell the user data may be delayed.
 - Keep secrets in environment variables.
 
-See [ROADMAP.md](ROADMAP.md) for the step-by-step sequence.
+See [ROADMAP.md](ROADMAP.md) for what shipped and what was left out.
