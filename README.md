@@ -1,8 +1,8 @@
 # SG BusFlow
 
-**Real-time Singapore bus arrivals, nearby stops, and journeys — on a Next.js site and an Expo app, from one FastAPI service.**
+**Real-time Singapore bus arrivals, nearby stops, journeys, and an in-app assistant — on a Next.js site and an Expo app, from one FastAPI service.**
 
-SG BusFlow shows stops around you, the next buses, and a walk-plus-bus trip. Minutes come from [LTA DataMall](https://datamall.lta.gov.sg/). The website and the phone never call LTA themselves. There is no account: saved stops stay on the device. This repository is the **portfolio / example** source. It runs with Docker on a development machine. It is not deployed.
+SG BusFlow shows stops around you, the next buses, and a walk-plus-bus trip. **Ask BusFlow** is the part other Singapore bus apps leave out: you ask in plain language, and it looks up the same live stops, arrivals, and journeys, then answers with a short reply and tappable cards. Minutes come from [LTA DataMall](https://datamall.lta.gov.sg/). The website, the phone, and the model never invent a time. There is no account: saved stops stay on the device. This repository is the **portfolio / example** source. It runs with Docker on a development machine. It is not deployed.
 
 [![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -15,7 +15,7 @@ SG BusFlow shows stops around you, the next buses, and a walk-plus-bus trip. Min
 
 ## Product overview
 
-A bus app that invents an arrival time is worse than one that says the feed is late. SG BusFlow keeps LTA behind one worker, stores the network in PostgreSQL with PostGIS, and keeps the latest minutes in Redis. Web and Expo only read that API.
+A bus app that invents an arrival time is worse than one that says the feed is late. SG BusFlow keeps LTA behind one worker, stores the network in PostgreSQL with PostGIS, and keeps the latest minutes in Redis. Web and Expo only read that API. Ask BusFlow is a tab on both clients. It calls tools on that same API, then explains the result. It does not plan the route itself and it does not offer MRT.
 
 If GPS is denied, the app says location is off and uses a Boon Lay pin so the screens are not blank. Light theme is the default. Dark theme is a switch in the header.
 
@@ -23,6 +23,7 @@ If GPS is denied, the app says location is off and uses a Boon Lay pin so the sc
 
 | Capability | What it provides |
 | --- | --- |
+| **Ask BusFlow** | Chat for "buses near me", "how do I get to Changi Airport?", or "when is the next 230?". Tools search stops, read cached arrivals, and run the journey planner. The reply is one or two sentences. Cards open the stop or the trip. |
 | **Nearby stops** | Stops within walking distance, with the next buses on the first stop. |
 | **Search** | Stop name, road, code, or bus number. |
 | **Live arrivals** | Minutes, load, and a map of buses at the stop. Updates over a WebSocket. |
@@ -30,7 +31,6 @@ If GPS is denied, the app says location is off and uses a Boon Lay pin so the sc
 | **Journey** | Walk, bus, and at most two transfers. Ranked by time or by fewer changes. |
 | **Saved** | Stops and services kept on this phone or browser. No login. |
 | **Arrival alerts** | Optional local notification when a saved stop or the last journey's first bus is inside 3, 5, or 8 minutes. Off by default. |
-| **Assistant** | Answers from nearby stops, journeys, and cached arrivals. It does not calculate the route itself. |
 | **Stale data** | If LTA fails, the last cached minutes stay up and are marked late. |
 
 ## Product walkthrough
@@ -67,11 +67,15 @@ The plan is walk, board, and alight. "Next bus" is a cached minute, not a guesse
 
 ![Map of stops around the current location](docs/screenshots/map-light.jpg)
 
-### Saved and assistant
+### Ask BusFlow
 
-| Saved on this phone | Assistant |
-| --- | --- |
-| ![Saved stops and service 238](docs/screenshots/saved-light.jpg) | ![Assistant listing nearby stops from the API](docs/screenshots/ai-light.jpg) |
+![Ask BusFlow listing nearby stops as cards](docs/screenshots/ai-light.jpg)
+
+"Find buses near me" returns the stops the API already has, with walking distance. Open a card for arrivals. A place question uses the same journey planner as the Journey screen. If the cache has no minute, the reply says live times are not available.
+
+### Saved
+
+![Saved stops and service 238](docs/screenshots/saved-light.jpg)
 
 ### Dark theme
 
@@ -94,9 +98,11 @@ flowchart LR
     API --> Redis
     Web[Next.js] --> API
     Expo[Expo Go] --> API
+    Ask[Ask BusFlow] --> API
+    Ask --> LLM[Groq, then Gemini, then OpenAI]
 ```
 
-The worker is the only process that calls DataMall. It writes stops, routes, and route-stops into Postgres, and arrivals plus the service list into Redis. FastAPI reads those stores. A WebSocket publishes arrival updates from Redis to whoever is watching that stop.
+The worker is the only process that calls DataMall. It writes stops, routes, and route-stops into Postgres, and arrivals plus the service list into Redis. FastAPI reads those stores. A WebSocket publishes arrival updates from Redis to whoever is watching that stop. Ask BusFlow sends the question to the model with tools. Those tools read the same API. The model writes the sentence. The cards are the tool results.
 
 ## Arrival integrity
 
@@ -108,6 +114,7 @@ A minute on screen has to be traceable to LTA.
 | **No invented times** | Journey ranking uses cached minutes. Missing cache means no live wait, not a made-up one. |
 | **Stale cache** | After an LTA error, the previous payload is returned with `stale: true` and `age_seconds`. |
 | **Redis down** | Stop search and journey planning still use Postgres. Live minutes wait until Redis is back. |
+| **Assistant tools** | Stops, services, arrivals, live buses, and journeys in a reply come from tool results. An empty result is "BusFlow does not have that", not a guess. |
 | **One worker** | The arrival loop is its own process. Extra API containers do not each poll LTA. |
 | **Migrations** | `alembic upgrade head` is a separate command. API startup does not change the schema. |
 
@@ -120,7 +127,7 @@ A minute on screen has to be traceable to LTA.
 | **API** | Python 3.12, FastAPI, Pydantic, SQLAlchemy, Alembic, GeoAlchemy2 |
 | **Data** | PostgreSQL 16, PostGIS 3.5, Redis 7 |
 | **Live** | WebSockets, Redis pub/sub |
-| **Assistant** | Groq first, then Gemini, then OpenAI. Tools call the same API data. |
+| **Ask BusFlow** | Groq first (`openai/gpt-oss-120b`), then Gemini, then OpenAI. Tools call the same API data. |
 | **Run and check** | Docker Compose, pytest, GitHub Actions |
 
 ## Project structure
